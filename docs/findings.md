@@ -23,7 +23,7 @@ UE4SS ruft BP-Hooks **nach** der Funktion auf. Die Reaktion eines Treffers läuf
 
 1. **Treffer ganz blockieren** (Budget verbraucht): `invincibleFrame?` am `CombatModule_Player_C` setzen, solange kein Angreifer im Fenster mehr ein Budget hat; danach zurücksetzen. Genauer pro Angreifer: im Post-Hook auf dessen `CombatModule_AI_Humanoid:EnableTrace` (einmal pro Hieb) den Spieler in seine `HitActors` eintragen – die KI trifft dasselbe Ziel pro Hieb nur einmal (`AtackingEnemyChecks` prüft `HitActors`). Ob UE4SS 3.0.1 TMaps aus Lua beschreiben kann, ist offen.
 2. **Schaden ja, Taumler nein** (erlaubter Treffer im Fenster): im `GotHit`-Post-Hook die gerade gestartete Treffer-Montage am Spieler stoppen (`StopAnimMontage`). Das `isAttackingState`-NotifyState sollte beim Stoppen sein `NotifyEnd` bekommen und `CombatState` zurücksetzen – live prüfen, sonst `CombatState` selbst auf Idle (2) setzen.
-3. **Reaktion erkennen**: im `GotHit`-Post-Hook die laufende Montage des Spielers lesen. Name enthält `Knockdown` → `knock`; `_Hit_` (auch `Hit_light`, `Hit_Back`) → `stagger`; keine neue Montage → `none`.
+3. **Reaktion erkennen** (umgesetzt nach dem Review): Post-Hooks auf `Reaction`, `GitHit` und `Knock` des Spielers feuern vor dem `GotHit`-Post-Hook. `GitHit` → `stagger`, `Knock` → `knock`; ohne `Reaction` im selben Frame ist der Treffer nicht durchgekommen (Block, Ausweichen, Unverwundbarkeit) und zählt nicht. Montage-Namen taugen nicht: Rapier-Block (`Sword1h_Hit_Head_Front_Parry_Montage`) enthält auch `_Hit_`.
 
 ## Gegner (statisch)
 
@@ -35,7 +35,7 @@ UE4SS ruft BP-Hooks **nach** der Funktion auf. Die Reaktion eines Treffers läuf
 
 Vorher fragen, ob Pascal spielt; Spielstände sichern; Mod mit `debug = true` deployen (`! scripts/deploy-deck.sh`).
 
-1. Arena 1 gegen 1: `UE4SS.log` zeigt pro Treffer `hit <Angreifer> reaction=<…> montage=<…>`. Stimmt die Erkennung (Taumler, Niederschlag, Block)?
+1. Arena 1 gegen 1: `UE4SS.log` zeigt pro Treffer `hit by <Angreifer> reaction=<…>`. Stimmt die Erkennung (Taumler, Niederschlag, Block zählt nicht)? Feuern die Hooks in der erwarteten Reihenfolge?
 2. Taumler im Fenster: Wird die Montage gestoppt, kann Pascal sofort wieder handeln, und steht `CombatState` danach auf Idle?
 3. Folgetreffer: Kommt nach dem ersten Folgetreffer desselben Gegners noch etwas an?
 4. Werte: `ue enum ALS_OverlayState`; `GetOverlayState` eines Bogenschützen lesen.

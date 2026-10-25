@@ -144,12 +144,16 @@ local function onGotHit(ctx, _impact, _damage, _stamina, _stagger, _direction, a
         local reaction = landed and seen.kind or "none"
         seen.reacted, seen.kind = false, "none"
         if not landed then return end
-        local ctrl = attacker:get()
+        -- GotHit gets the attacking character; rules and blackboards are keyed by its AI controller.
+        local enemy = attacker:get()
         local pawn = playerPawn()
-        if not valid(ctrl) or not pawn then return end
+        if not valid(enemy) or not pawn then return end
+        local ctrl = enemy.Controller
+        if not valid(ctrl) then return end
         local id = ctrl:GetFullName()
-        local enemy = ctrl.Pawn
-        local ranged = isRanged(valid(enemy) and enemy:GetDistanceTo(pawn) or 0)
+        -- Hits that don't come from an NPC (traps, falling, your own thrown junk) never lock anyone.
+        local npc = ctrl:GetClass():GetFName():ToString() == "GS_AI_NPCController_C"
+        local ranged = not npc or isRanged(enemy:GetDistanceTo(pawn))
 
         local protected = policy:protection(t)
         local mayHit = policy:mayHit(t, id, ranged)

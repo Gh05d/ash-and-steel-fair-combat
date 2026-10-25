@@ -50,3 +50,11 @@ Kandidaten, live zu vergleichen (Brücke, Arena):
 - **B:** `Strafing?` = true für gehaltene Gegner – vielleicht strafen `MoveToTarget`/`Taunt` dann statt zu laufen.
 - **A:** eigener Bewegungsbefehl alle ~1 s: `AIController:MoveToLocation` auf einen Punkt im Ring (`ready` 250 cm, `wait` 400 cm) um den Spieler plus `K2_SetFocus(Spieler)`. Risiko: `AI_C_MoveToTarget` überschreibt den Befehl.
 - **C:** Blackboard `Stamina` für gehaltene Gegner unter 0,2 setzen → der BT nimmt seine eigenen Zweige Umkreisen/Verspotten. Risiko: `BB_SetStaminaAndHP` überschreibt `Stamina` alle 0,1 s.
+
+## Live-Test 2026-10-25 abends (Arena, 1 gegen 1, nach Fix 365bd75)
+
+- Pascal: „hat sich gut angefühlt“.
+- Log: Taumler 16:02:40,18 → Verursacher ab Fensterende gesperrt (`hold` 41,77–42,30), sein nächster Hieb um 42,18 geblockt (`block`/`unblock` 42,18–42,44), danach Kombo-Rückweichen 42,70–44,30.
+- Niederschlag 16:03:05,32 → Sperre ab Fensterende (`hold` 08,98–09,38). `knockWindow` 3,5 s passt.
+- Wichtig: `GotHit` p6 ist die **Spielfigur** des Angreifers, nicht der Controller (vorher falsch gelesen: `owner=p6` im Trace = Besitzer von p6). Ein Treffer kam mit Angreifer `PlayerCharacter_C` (Umgebung/eigene Wurfgegenstände) – zählt jetzt ohne Sperre.
+- Noch nicht live geprüft: Angriffsrecht mit mehreren Gegnern, Rapier-Block, ob der abgebrochene Taumler die Figur kurz festhält.

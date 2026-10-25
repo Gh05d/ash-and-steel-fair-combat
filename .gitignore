@@ -1,0 +1,6 @@
+# local UE4SS copy and build output
+deploy/
+dist/
+.claude/
+.env
+.codegraph/

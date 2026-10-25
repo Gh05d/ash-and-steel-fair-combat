@@ -58,3 +58,9 @@ Kandidaten, live zu vergleichen (Brücke, Arena):
 - Niederschlag 16:03:05,32 → Sperre ab Fensterende (`hold` 08,98–09,38). `knockWindow` 3,5 s passt.
 - Wichtig: `GotHit` p6 ist die **Spielfigur** des Angreifers, nicht der Controller (vorher falsch gelesen: `owner=p6` im Trace = Besitzer von p6). Ein Treffer kam mit Angreifer `PlayerCharacter_C` (Umgebung/eigene Wurfgegenstände) – zählt jetzt ohne Sperre.
 - Noch nicht live geprüft: Angriffsrecht mit mehreren Gegnern, Rapier-Block, ob der abgebrochene Taumler die Figur kurz festhält.
+
+## Live-Test 2026-10-25 ~23:30 (Arena 1 gegen 1, Variante G deployt)
+
+- Warte-Varianten: A/B/C (Laufbefehl, `Strafing?`, Blackboard-Ausdauer) → Gegner folgt nur. D/E (echte Ausdauer, `SetDefenceMode`) → steht auf Abstand, tut nichts. F/G (dazu eigener Kreislauf per `MoveToLocation` + `K2_SetFocus`) → „sah gut aus, G am besten“ (Pascal). G ist eingebaut.
+- Dolch-Gegner: Hieb während der Sperre lief sichtbar weiter, Treffer geblockt („kein Schaden“). Pascal: stört nicht, „er hat mich verfehlt“.
+- Im 1 gegen 1 sind Sperren kurz (0,5 s Verursacher, 1,5 s Kombo-Rückweichen) – das Kreisen fällt kaum auf. Prüfen im Gruppenkampf (Banditen), wo Gegner in Bereitschaft/Warten länger gehalten werden.

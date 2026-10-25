@@ -33,6 +33,9 @@ local ATTACKING = { [0] = true, [11] = true, [12] = true } -- Character_CombatSt
 local SWING_MAX = 1.5                               -- safety: invincibility for one swing never lasts longer (s)
 local SCAN_MS = 1500                                -- how often the list of AI controllers is rebuilt
 local SAME_HIT = 0.02                               -- Reaction and GotHit of one hit run in the same frame (s)
+local HUMAN = "GS_AI_NPCController_C"               -- human NPCs; animals use the engine's plain AIController
+local ANIMAL = "AIController"
+local ANIMAL_HELD = 10                              -- SimpleAttackCounter this high: animals taunt and dodge instead of biting
 
 -- While the mod holds the player's invincibility it leaves this file next to the script, so a script reload
 -- (Ctrl+R) in the middle of a blocked swing can still give the flag back.
@@ -153,7 +156,8 @@ local function onGotHit(ctx, _impact, _damage, _stamina, _stagger, _direction, a
         if not valid(ctrl) then return end
         local id = ctrl:GetFullName()
         -- Hits that don't come from an NPC (traps, falling, your own thrown junk) never lock anyone.
-        local npc = ctrl:GetClass():GetFName():ToString() == "GS_AI_NPCController_C"
+        local pc = UEHelpers.GetPlayerController()
+        local npc = not valid(pc) or ctrl:GetFullName() ~= pc:GetFullName()
         local ranged = not npc or isRanged(enemy:GetDistanceTo(pawn))
 
         local protected = policy:protection(t)
@@ -198,8 +202,13 @@ local function onEnemyTrace(ctx, enable)
     if not ok then log("EnableTrace hook error: %s", tostring(err)) end
 end
 
--- Held enemies raise their guard (the game's own SetDefenceMode) and walk around the player at a distance,
+local function isHuman(ctrl)
+    return ctrl:GetClass():GetFName():ToString() == HUMAN
+end
+
+-- Held humans raise their guard (the game's own SetDefenceMode) and walk around the player at a distance,
 -- facing them. Without this they only follow the player (the behavior tree's MoveToTarget branch).
+-- Animals need none of this: their tree taunts, dodges and jumps when it may not bite.
 local moves = {}        -- controller full name -> { next = t, guard = t, sign = 1|-1, guarded = bool }
 local turn = 1
 
@@ -240,15 +249,19 @@ local function wander(ctrl, enemy, pawn, id, role, t)
     end
 end
 
+-- Humans: the attack branch of their tree only runs while "DefenceMode?" is not set. Animals: simple bites
+-- only run while SimpleAttackCounter is at most 3; their taunt resets it, so it is set again every tick.
 local function hold(ctrl, id, want)
     local bb = ctrl.Blackboard
     if not valid(bb) then return end
+    local human = isHuman(ctrl)
+    if want and not human then bb:SetValueAsInt(key("SimpleAttackCounter"), ANIMAL_HELD) end
     if want and not owned[id] then
-        bb:SetValueAsBool(key("DefenceMode?"), true)
+        if human then bb:SetValueAsBool(key("DefenceMode?"), true) end
         owned[id] = ctrl
         dbg("hold %s", id)
     elseif not want and owned[id] then
-        bb:SetValueAsBool(key("DefenceMode?"), false)
+        if human then bb:SetValueAsBool(key("DefenceMode?"), false) else bb:SetValueAsInt(key("SimpleAttackCounter"), 0) end
         owned[id] = nil
         pcall(stopWander, ctrl, id)
         dbg("release %s", id)
@@ -269,7 +282,10 @@ local function tick()
     local pawn = playerPawn()
     if not pawn then return end
     if t >= nextScan then
-        controllers = FindAllOf("GS_AI_NPCController_C") or {}
+        controllers = {}
+        for _, cls in ipairs({ HUMAN, ANIMAL }) do
+            for _, c in ipairs(FindAllOf(cls) or {}) do controllers[#controllers + 1] = c end
+        end
         nextScan = t + SCAN_MS / 1000
     end
     local me = pawn:GetFullName()
@@ -297,7 +313,7 @@ local function tick()
             or (CFG.antiStunlock and not e.ranged and not policy:available(t, e.id))
         local ctrl = byId[e.id]
         hold(ctrl, e.id, want)
-        if owned[e.id] then
+        if owned[e.id] and isHuman(ctrl) then
             local ok, err = pcall(wander, ctrl, ctrl.Pawn, pawn, e.id, role, t)
             if not ok then dbg("wander %s: %s", e.id, tostring(err)) end
         end
@@ -315,7 +331,7 @@ end
 -- A script reload (Ctrl+R) loses the list of enemies the mod held back; nothing else in the game uses
 -- "DefenceMode?", so clear it everywhere once.
 local function clearAllHolds()
-    for _, ctrl in ipairs(FindAllOf("GS_AI_NPCController_C") or {}) do
+    for _, ctrl in ipairs(FindAllOf(HUMAN) or {}) do
         local bb = valid(ctrl) and ctrl.Blackboard or nil
         if valid(bb) and bb:GetValueAsBool(key("DefenceMode?")) then bb:SetValueAsBool(key("DefenceMode?"), false) end
     end

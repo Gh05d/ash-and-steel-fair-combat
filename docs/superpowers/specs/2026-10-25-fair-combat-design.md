@@ -23,7 +23,7 @@ Erfolg heißt (C): In Kämpfen gegen 2–3 Gegner gibt es keine Todeskombos mehr
 
 ### 2. Souls-artiges Gegnerverhalten (P: „soulslike combat ist eine gute Idee“)
 
-**Gilt für Menschen und Tiere** (P: Tiere „sind noch schlimmer als Menschen mit den Combos, besonders diese Wood-Käfer“). Tiere haben eigene Behavior Trees (`Characters/GS_Animals/**/GS_*_BT`, z. B. `GS_Koroed_BT` – „Koroed“ = Borkenkäfer, vermutlich Pascals Wood-Käfer (C) –, `GS_Forester_BT`, `GS_Wolf_New_BT`) und eigene Kampfmodule. Ob es dort einen Hebel wie `DefenceMode?` gibt, ist ungeprüft. Die Käfer haben Vorrang (C, nach Pascals Beispiel).
+**Gilt für Menschen und Tiere** (P: Tiere „sind noch schlimmer als Menschen mit den Combos, besonders diese Wood-Käfer“). Tiere haben eigene Behavior Trees (`Characters/GS_Animals/**/GS_*_BT`, z. B. `GS_Forester_BT` – **Woodwalker/Zangenkäfer** (`gs_n_forester`), Pascals „Wood-Käfer“ (P, 2026-10-26) –, `GS_Wolf_New_BT` (Mauler, `gs_n_fanger`)) und eigene Kampfmodule. Ob es dort einen Hebel wie `DefenceMode?` gibt, ist ungeprüft. Die Käfer haben Vorrang (C, nach Pascals Beispiel).
 
 - **Angriffsrecht:** Nur eine begrenzte Zahl von Nahkämpfern greift gleichzeitig an. Standard (C): **1 aktiver Angreifer, 1 weiterer in Bereitschaft** (nah, übernimmt, wenn der Platz frei wird), Rest hält Abstand. Einstellbar.
 - **Wartende Gegner verhalten sich natürlich:** auf Abstand gehen, umkreisen, gelegentlich verspotten. Sie laufen dem Spieler **nicht nur stumm hinterher** – genau das passierte im Live-Test, als ein Gegner nur gesperrt war (siehe Befunde).
@@ -110,6 +110,5 @@ Live (Brücke RekitBridge, Arena 1 gegen 1, 2026-10-25):
 - Schreibt eine ungecachte NPC-Klasse `DefenceMode?` selbst? (`rekit ue fetch 'Characters/**'` in Teilen, dann `refs`.)
 - Warum der Gegner nach der Freigabe „überrollte“ (aufgestaute Zähler `ComboAttackCounter`/`SimpleAttackCounter`, Ausdauer, oder Zufall).
 - Gilt der Behavior Tree für alle menschlichen Gegner (Banditen, Arena, Wachen) oder gibt es Varianten? Wie greifen die Tier-Trees an, und welcher Hebel sperrt dort einen Angriff?
-- Welche Tierklasse sind Pascals „Wood-Käfer“? (Kandidaten `Koroed`, `PolevoiZhuk`/`Forester`; im Spiel per Brücke am Kampfgegner ablesen.)
 - Bosse und geskriptete Kämpfe: Eine Angriffssperre darf ihre Abläufe nicht kaputt machen (C: Bosse zunächst ausnehmen, wenn erkennbar).
 - Wie stark ein langsamerer Vorlauf das Timing von Parry/Perfect Parry verschiebt (Parry-Fenster hängt an Gegner-Notifies).

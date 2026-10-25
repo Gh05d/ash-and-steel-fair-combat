@@ -39,3 +39,14 @@ Vorher fragen, ob Pascal spielt; Spielstände sichern; Mod mit `debug = true` de
 2. Taumler im Fenster: Wird die Montage gestoppt, kann Pascal sofort wieder handeln, und steht `CombatState` danach auf Idle?
 3. Folgetreffer: Kommt nach dem ersten Folgetreffer desselben Gegners noch etwas an?
 4. Werte: `ue enum ALS_OverlayState`; `GetOverlayState` eines Bogenschützen lesen.
+
+## Wartende Gegner (Task 6, statisch)
+
+Live gesehen: Ein Gegner mit `DefenceMode?` = true läuft nur hinterher. Grund im BT: Kann er nicht angreifen, nimmt die Schleife den Zweig `MoveToTarget` (`Stamina > 0.2` und `DistanceToTarget >= 200`) → `AI_C_MoveToTarget` läuft auf den Spieler zu. Verspotten (Cooldown 10 s) und Umkreisen (`Stamina < 0.2` → `AI_C_Wait` 5 s mit Service `BB_Strafe`, Cooldown 20 s) sind meist gesperrt.
+
+`BB_Strafe` strafet selbst: `AddMovementInput` seitlich/rückwärts, `AIController:K2_SetFocus(Target)`, Strafe-Montage, Blackboard-Bools (`Strafing?`, `StrafingNoObstacles?`). `AI_C_MoveToTarget`, `AI_C_TauntCustom`, `AI_C_Attack` und `BB_SetWalkSpeed` lesen `Strafing?`.
+
+Kandidaten, live zu vergleichen (Brücke, Arena):
+- **B:** `Strafing?` = true für gehaltene Gegner – vielleicht strafen `MoveToTarget`/`Taunt` dann statt zu laufen.
+- **A:** eigener Bewegungsbefehl alle ~1 s: `AIController:MoveToLocation` auf einen Punkt im Ring (`ready` 250 cm, `wait` 400 cm) um den Spieler plus `K2_SetFocus(Spieler)`. Risiko: `AI_C_MoveToTarget` überschreibt den Befehl.
+- **C:** Blackboard `Stamina` für gehaltene Gegner unter 0,2 setzen → der BT nimmt seine eigenen Zweige Umkreisen/Verspotten. Risiko: `BB_SetStaminaAndHP` überschreibt `Stamina` alle 0,1 s.

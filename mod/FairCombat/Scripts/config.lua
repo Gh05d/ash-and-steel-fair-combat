@@ -4,7 +4,7 @@ return {
     antiStunlock = true,
     staggerWindow = 1.5,
     recoverBuffer = 0.5, -- the enemy who staggered you waits this much longer after the window
-    knockWindow = 3.0,   -- protection while you are knocked down and getting up
+    knockWindow = 3.5,   -- protection while you are knocked down and getting up
 
     -- Attack rights: how many melee enemies may attack you at once, and how many wait close by.
     attackRights = true,

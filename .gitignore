@@ -4,3 +4,6 @@ dist/
 .claude/
 .env
 .codegraph/
+.superpowers/
+tests/.venv/
+__pycache__/

@@ -91,6 +91,18 @@ function Policy:observe(now, id, comboCount, attacking)
     self.combo[id] = c
 end
 
+-- Point on a circle of `radius` around the player (px, py), turned `angle` degrees from the enemy's
+-- current direction (sign 1 = counter-clockwise, -1 = clockwise). Waiting enemies walk there.
+function Policy.orbitPoint(px, py, ex, ey, radius, angle, sign)
+    local dx, dy = ex - px, ey - py
+    local len = math.sqrt(dx * dx + dy * dy)
+    if len < 1 then dx, dy, len = 1, 0, 1 end
+    dx, dy = dx / len, dy / len
+    local a = math.rad(angle) * sign
+    local rx, ry = dx * math.cos(a) - dy * math.sin(a), dx * math.sin(a) + dy * math.cos(a)
+    return px + rx * radius, py + ry * radius
+end
+
 -- Can this enemy attack right now (not locked, not backing off, has not used its hit in the window)?
 function Policy:available(now, id)
     if self:locked(now, id) then return false end

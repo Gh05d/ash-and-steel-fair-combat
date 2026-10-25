@@ -13,6 +13,14 @@ return {
     comboBackoff = 1.5,  -- an enemy backs off this long after finishing a combo
     rangedDistance = 750, -- enemies farther away than this count as ranged (archers) and are left alone
 
+    -- Waiting enemies raise their guard and walk around you instead of just following you.
+    waitBehavior = true,
+    readyDistance = 250, -- the enemy next in line circles this close
+    waitDistance = 400,  -- everyone else keeps this distance
+    orbitStep = 50,      -- degrees around you per move
+    orbitEvery = 1.0,    -- a new move every this many seconds
+    guardEvery = 8.0,    -- the guard stance is renewed this often (the game ends it after 8-12 s)
+
     tickMs = 100,        -- how often enemies are re-evaluated (ms)
     debug = false,       -- log every decision to UE4SS.log
 }

@@ -11,7 +11,8 @@
 --   * EnableTrace (enemy, once per swing): if this enemy may not hit right now, the player ignores hits
 --     (the game's own invincibility flag) until the swing ends.
 --   * Every tickMs: enemies fighting the player get attack rights; the others are held back through the
---     behavior tree key "DefenceMode?" (the attack branch only runs while it is not set).
+--     behavior tree key "DefenceMode?" (the attack branch only runs while it is not set), raise their guard
+--     and walk around the player.
 local VERSION = "0.1.0"
 
 local UEHelpers = require("UEHelpers")
@@ -197,6 +198,48 @@ local function onEnemyTrace(ctx, enable)
     if not ok then log("EnableTrace hook error: %s", tostring(err)) end
 end
 
+-- Held enemies raise their guard (the game's own SetDefenceMode) and walk around the player at a distance,
+-- facing them. Without this they only follow the player (the behavior tree's MoveToTarget branch).
+local moves = {}        -- controller full name -> { next = t, guard = t, sign = 1|-1, guarded = bool }
+local turn = 1
+
+local function stopWander(ctrl, id)
+    local w = moves[id]
+    moves[id] = nil
+    if not w or not valid(ctrl) then return end
+    local enemy = ctrl.Pawn
+    local m = valid(enemy) and component(enemy, ENEMY) or nil
+    if w.guarded and m then m:ReturnToBasicMode() end
+    ctrl:StopMovement()
+    ctrl:K2_ClearFocus()
+end
+
+local function wander(ctrl, enemy, pawn, id, role, t)
+    if not CFG.waitBehavior then return end
+    local w = moves[id]
+    if not w then
+        turn = -turn
+        w = { next = 0, guard = 0, sign = turn }
+        moves[id] = w
+    end
+    if t >= w.guard then
+        local m = component(enemy, ENEMY)
+        if m then
+            m:SetDefenceMode(false)
+            w.guarded = true
+        end
+        w.guard = t + CFG.guardEvery
+    end
+    if t >= w.next then
+        local a, b = pawn:K2_GetActorLocation(), enemy:K2_GetActorLocation()
+        local radius = role == "ready" and CFG.readyDistance or CFG.waitDistance
+        local x, y = Policy.orbitPoint(a.X, a.Y, b.X, b.Y, radius, CFG.orbitStep, w.sign)
+        ctrl:MoveToLocation({ X = x, Y = y, Z = b.Z }, 50, true, true, true, true, nil, true)
+        ctrl:K2_SetFocus(pawn)
+        w.next = t + CFG.orbitEvery
+    end
+end
+
 local function hold(ctrl, id, want)
     local bb = ctrl.Blackboard
     if not valid(bb) then return end
@@ -207,6 +250,7 @@ local function hold(ctrl, id, want)
     elseif not want and owned[id] then
         bb:SetValueAsBool(key("DefenceMode?"), false)
         owned[id] = nil
+        pcall(stopWander, ctrl, id)
         dbg("release %s", id)
     end
 end
@@ -251,12 +295,18 @@ local function tick()
         local role = roles[e.id]
         local want = (CFG.attackRights and (role == "ready" or role == "wait"))
             or (CFG.antiStunlock and not e.ranged and not policy:available(t, e.id))
-        hold(byId[e.id], e.id, want)
+        local ctrl = byId[e.id]
+        hold(ctrl, e.id, want)
+        if owned[e.id] then
+            local ok, err = pcall(wander, ctrl, ctrl.Pawn, pawn, e.id, role, t)
+            if not ok then dbg("wander %s: %s", e.id, tostring(err)) end
+        end
     end
     for id, ctrl in pairs(owned) do -- left the fight, died or no longer targets the player
         if not byId[id] then
             if valid(ctrl) then pcall(hold, ctrl, id, false) end
             owned[id] = nil
+            moves[id] = nil
             policy:forget(id)
         end
     end
@@ -300,7 +350,7 @@ RegisterHook("/Script/Engine.PlayerController:ClientRestart", function()
     pcall(unblock)
     pcall(recoverFlag)
     policy:reset()
-    owned, blocking, controllers, nextScan = {}, nil, {}, 0
+    owned, blocking, controllers, nextScan, moves = {}, nil, {}, 0, {}
     registerGameHooks()
 end)
 registerGameHooks()
@@ -321,7 +371,7 @@ end)
 pcall(function()
     RegisterLoadMapPostHook(function()
         policy:reset()
-        owned, blocking, controllers, nextScan = {}, nil, {}, 0
+        owned, blocking, controllers, nextScan, moves = {}, nil, {}, 0, {}
     end)
 end)
 

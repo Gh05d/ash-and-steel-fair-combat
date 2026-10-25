@@ -204,3 +204,23 @@ class HelpersTest(PolicyCase):
         self.p.observe(self.p, 0.0, 'A', 1, True)
         self.p.observe(self.p, 0.5, 'A', 2, False)
         self.assertEqual(self.roles(0.6, ('A', 100)), {'A': 'attack'})
+
+
+class OrbitTest(unittest.TestCase):
+    def setUp(self):
+        self.lua, _ = load_policy()
+        self.policy = self.lua.eval('(require("policy"))')
+
+    def point(self, player, enemy, radius, angle, sign):
+        x, y = self.policy.orbitPoint(player[0], player[1], enemy[0], enemy[1], radius, angle, sign)
+        return round(x, 3), round(y, 3)
+
+    def test_orbit_turns_around_player(self):
+        self.assertEqual(self.point((0, 0), (100, 0), 400, 90, 1), (0, 400))
+        self.assertEqual(self.point((0, 0), (100, 0), 400, 90, -1), (0, -400))
+
+    def test_orbit_keeps_distance(self):
+        self.assertEqual(self.point((10, 20), (10, 520), 250, 0, 1), (10, 270))
+
+    def test_orbit_enemy_on_player(self):
+        self.assertEqual(self.point((0, 0), (0, 0), 400, 0, 1), (400, 0))

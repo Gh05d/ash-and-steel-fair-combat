@@ -36,7 +36,7 @@ Erfolg heißt (C): In Kämpfen gegen 2–3 Gegner gibt es keine Todeskombos mehr
 - Pascal: Treffer zählen manchmal nicht, „wahrscheinlich wenn man zu nah ist“.
 - **Erst messen, dann ändern (C):** Hiebe gegen tatsächliche Treffer, mit Abstand zum Gegner.
 - Ziel: Wo die Klinge den Gegner sichtbar durchquert, zählt der Treffer. Gleicher Schaden pro Treffer, keine größere Reichweite als die Klinge (C).
-- Nur die Treffer des **Spielers**. Gegner-Treffer werden nicht zuverlässiger gemacht (C: das würde das Spiel schwerer machen, ist nicht gewünscht).
+- **Für beide Seiten** (P: „die Gegner sollten auch profitieren“): Auch Gegner-Treffer werden zuverlässiger, nach demselben Maßstab. Gegner-Traces laufen im `CombatModule_AI_Humanoid` (`Trace`/`EnableTrace`/`SelectAttackTrace`) bzw. in den Tier-Modulen; dort zuerst messen, ob sie dieselbe Lücke haben.
 
 ### 4. Gegner drehen sich nicht mehr blitzschnell zurück (P)
 

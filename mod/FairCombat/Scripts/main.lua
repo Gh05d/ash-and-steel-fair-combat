@@ -33,8 +33,8 @@ local ATTACKING = { [0] = true, [11] = true, [12] = true } -- Character_CombatSt
 local SWING_MAX = 1.5                               -- safety: invincibility for one swing never lasts longer (s)
 local SCAN_MS = 1500                                -- how often the list of AI controllers is rebuilt
 local SAME_HIT = 0.02                               -- Reaction and GotHit of one hit run in the same frame (s)
-local HUMAN = "GS_AI_NPCController_C"               -- human NPCs; animals use the engine's plain AIController
-local ANIMAL = "AIController"
+local HUMAN = "GS_AI_NPCController_C"               -- human NPCs; animals have GS_AI_AnimalController_C
+local ANIMAL = "GS_AI_AnimalController_C"
 local ANIMAL_HELD = 10                              -- SimpleAttackCounter this high: animals taunt and dodge instead of biting
 
 -- While the mod holds the player's invincibility it leaves this file next to the script, so a script reload

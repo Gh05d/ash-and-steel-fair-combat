@@ -7,3 +7,4 @@ dist/
 .superpowers/
 tests/.venv/
 __pycache__/
+mod/FairCombat/Scripts/blocking.flag

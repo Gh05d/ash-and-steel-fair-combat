@@ -102,6 +102,23 @@ class WindowTest(PolicyCase):
         self.hit(0.4, 'R', ranged=True)
         self.assertTrue(self.may_hit(0.6, 'R', ranged=True))
 
+    def test_locked_causer_cannot_hit_after_window(self):
+        self.hit(0.0, 'A', 'stagger')
+        self.hit(0.5, 'A')
+        self.assertFalse(self.may_hit(1.7, 'A'))
+        self.assertTrue(self.may_hit(2.1, 'A'))
+
+    def test_causer_without_followup_cannot_hit_after_window(self):
+        self.hit(0.0, 'A', 'stagger')
+        self.assertFalse(self.may_hit(1.7, 'A'))
+
+    def test_locked_attacker_does_not_reopen_window(self):
+        self.hit(0.0, 'A', 'stagger')
+        self.hit(0.5, 'A')
+        self.hit(1.7, 'A', 'stagger')
+        self.assertIsNone(self.p.protection(self.p, 1.8))
+        self.assertFalse(self.may_hit(1.9, 'A'))
+
     def test_reaction_inside_window_does_not_extend_it(self):
         self.hit(0.0, 'A', 'stagger')
         self.hit(1.0, 'B', 'stagger')
@@ -174,18 +191,6 @@ class RolesTest(PolicyCase):
 
 
 class HelpersTest(PolicyCase):
-    def classify(self, name):
-        return self.lua.eval('(require("policy"))').classifyMontage(name)
-
-    def test_classify_montages(self):
-        self.assertEqual(self.classify('Sword1h_Knockdown_Front_Montage'), 'knock')
-        self.assertEqual(self.classify('Sword1h_Hit_Torso_Front_Montage'), 'stagger')
-        self.assertEqual(self.classify('Sword1h_Hit_light_Montage'), 'stagger')
-        self.assertEqual(self.classify('Longs_Hit_L2_Montage'), 'stagger')
-        self.assertEqual(self.classify('Sword1h_Hit_Back_Montage'), 'stagger')
-        self.assertEqual(self.classify('Attack_Move_med_T_1_Montage1'), 'none')
-        self.assertEqual(self.classify(None), 'none')
-
     def test_combo_end_starts_backoff(self):
         self.roles(0.0, ('A', 100))
         self.p.observe(self.p, 0.0, 'A', 3, False)

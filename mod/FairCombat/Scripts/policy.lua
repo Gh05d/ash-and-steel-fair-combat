@@ -40,12 +40,22 @@ function Policy:mayStagger(now)
     return self:protection(now) == nil
 end
 
+-- The enemy who caused the last window waits until the player has recovered: none of its hits may land,
+-- not even from a combo that was already running.
+function Policy:locked(now, id)
+    local l = self.lock[id]
+    return l ~= nil and l.from <= now and now < l.to
+end
+
 function Policy:mayHit(now, id, ranged)
-    if ranged or not self:protection(now) then return true end
+    if ranged then return true end
+    if self:locked(now, id) then return false end
+    if not self:protection(now) then return true end
     return not self.used[id]
 end
 
 function Policy:hit(now, id, reaction, ranged)
+    if not ranged and self:locked(now, id) then return end
     if self:protection(now) then
         if not ranged and not self.used[id] then
             self.used[id] = true
@@ -81,18 +91,9 @@ function Policy:observe(now, id, comboCount, attacking)
     self.combo[id] = c
 end
 
--- Player hit-reaction montage name -> "knock" | "stagger" | "none"
-function Policy.classifyMontage(name)
-    if type(name) ~= "string" then return "none" end
-    if name:find("Knockdown", 1, true) then return "knock" end
-    if name:find("_Hit_", 1, true) then return "stagger" end
-    return "none"
-end
-
 -- Can this enemy attack right now (not locked, not backing off, has not used its hit in the window)?
 function Policy:available(now, id)
-    local l = self.lock[id]
-    if l and l.from <= now and now < l.to then return false end
+    if self:locked(now, id) then return false end
     local b = self.backoff[id]
     if b and now < b then return false end
     if self.used[id] and self:protection(now) then return false end

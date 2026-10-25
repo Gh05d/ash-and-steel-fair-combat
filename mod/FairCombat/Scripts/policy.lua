@@ -20,10 +20,11 @@ function Policy:reset()
     self.lock = {}         -- id -> { from = t, to = t }
     self.backoff = {}      -- id -> t (backing off until)
     self.holders = {}      -- ordered list of ids holding an attack slot
+    self.combo = {}        -- id -> { count = n, running = bool, wasAttacking = bool }
 end
 
 function Policy:forget(id)
-    self.used[id], self.lock[id], self.backoff[id] = nil, nil, nil
+    self.used[id], self.lock[id], self.backoff[id], self.combo[id] = nil, nil, nil, nil
     for i = #self.holders, 1, -1 do
         if self.holders[i] == id then table.remove(self.holders, i) end
     end
@@ -65,6 +66,27 @@ end
 
 function Policy:comboEnded(now, id)
     self.backoff[id] = now + self.cfg.comboBackoff
+end
+
+-- Called every tick per enemy: comboCount = blackboard ComboAttackCounter, attacking = in an attack state.
+-- The combo task starts once the counter reached 3 and resets it; the combo ends when the enemy stops attacking.
+function Policy:observe(now, id, comboCount, attacking)
+    local c = self.combo[id] or {}
+    if (c.count or 0) >= 3 and comboCount < 3 then c.running = true end
+    if c.running and not attacking and c.wasAttacking then
+        c.running = false
+        self:comboEnded(now, id)
+    end
+    c.count, c.wasAttacking = comboCount, attacking
+    self.combo[id] = c
+end
+
+-- Player hit-reaction montage name -> "knock" | "stagger" | "none"
+function Policy.classifyMontage(name)
+    if type(name) ~= "string" then return "none" end
+    if name:find("Knockdown", 1, true) then return "knock" end
+    if name:find("_Hit_", 1, true) then return "stagger" end
+    return "none"
 end
 
 -- Can this enemy attack right now (not locked, not backing off, has not used its hit in the window)?

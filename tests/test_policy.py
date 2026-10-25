@@ -171,3 +171,31 @@ class RolesTest(PolicyCase):
         self.assertIsNone(self.p.protection(self.p, 0.3))
         self.assertTrue(self.may_hit(0.3, 'A'))
         self.assertEqual(self.roles(0.3, ('B', 100), ('A', 200)), {'B': 'attack', 'A': 'ready'})
+
+
+class HelpersTest(PolicyCase):
+    def classify(self, name):
+        return self.lua.eval('(require("policy"))').classifyMontage(name)
+
+    def test_classify_montages(self):
+        self.assertEqual(self.classify('Sword1h_Knockdown_Front_Montage'), 'knock')
+        self.assertEqual(self.classify('Sword1h_Hit_Torso_Front_Montage'), 'stagger')
+        self.assertEqual(self.classify('Sword1h_Hit_light_Montage'), 'stagger')
+        self.assertEqual(self.classify('Longs_Hit_L2_Montage'), 'stagger')
+        self.assertEqual(self.classify('Sword1h_Hit_Back_Montage'), 'stagger')
+        self.assertEqual(self.classify('Attack_Move_med_T_1_Montage1'), 'none')
+        self.assertEqual(self.classify(None), 'none')
+
+    def test_combo_end_starts_backoff(self):
+        self.roles(0.0, ('A', 100))
+        self.p.observe(self.p, 0.0, 'A', 3, False)
+        self.p.observe(self.p, 0.1, 'A', 0, True)
+        self.assertEqual(self.roles(1.0, ('A', 100)), {'A': 'attack'})
+        self.p.observe(self.p, 2.0, 'A', 0, False)
+        self.assertEqual(self.roles(3.4, ('A', 100)), {'A': 'wait'})
+        self.assertEqual(self.roles(3.6, ('A', 100)), {'A': 'attack'})
+
+    def test_simple_attacks_no_backoff(self):
+        self.p.observe(self.p, 0.0, 'A', 1, True)
+        self.p.observe(self.p, 0.5, 'A', 2, False)
+        self.assertEqual(self.roles(0.6, ('A', 100)), {'A': 'attack'})

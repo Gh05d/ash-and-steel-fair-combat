@@ -1,0 +1,39 @@
+[size=4][b]Fair Combat[/b][/size]
+[i]No More Stunlocks[/i]
+
+The combat in Of Ash and Steel is great, until two or three enemies catch you and you die in an endless chain of hit reactions without ever getting to move. Fair Combat keeps fights hard, but takes out the unfairness and gives group fights a Souls-like rhythm.
+
+[size=3][b]What it changes[/b][/size]
+
+[list]
+[*][b]No stunlock chains.[/b] After a stagger you can't be staggered again for a moment (damage still applies). The enemy who staggered you gets [b]one[/b] follow-up hit, then waits until you have recovered, even mid-combo. Afterwards there is a short breather in which nothing can stagger or knock you down again. Knockdowns work the same way: you can't be combo'd to death while you get up.
+[*][b]Attack rights.[/b] Only one melee enemy attacks you at a time, a second one waits close by and takes over. The others raise their guard and circle you at a distance. After a combo an enemy backs off for a moment.
+[*][b]Archers stay dangerous.[/b] Ranged enemies keep shooting, from behind too. Take them out first. Their arrows just can't stagger you again inside the protection window.
+[*][b]Enemies commit to their attacks.[/b] Humans aim briefly and then commit to a direction, so a side step at the right moment makes them miss. Attacking animals turn slower while they bite or charge.
+[*][b]Readable wind-ups.[/b] The few enemy attacks whose hit comes almost instantly (some rapier and two-handed attacks) start a little slower, so you can see them coming. The swing itself keeps its speed.
+[*][b]Humans and animals.[/b] Bandits, guards, cursed warriors, Woodwalkers, Maulers, Tunnel Beasts, Rovers and others that use the game's combat AI.
+[/list]
+
+[size=3][b]Good to know[/b][/size]
+
+[list]
+[*]The game stays difficult: no extra damage for you, no less damage from enemies, no long invincibility.
+[*]Nothing in the game's files is replaced. The mod steers the game's own combat AI at runtime, so it works next to pak mods.
+[*]Every feature and every value can be changed or switched off in [i]Scripts/config.lua[/i].
+[/list]
+
+[size=3][b]Installation[/b][/size]
+
+[list=1]
+[*]Install [url=https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/experimental-latest]UE4SS[/url] (experimental build, tested with v3.0.1-1181): [i]dwmapi.dll[/i] and the [i]ue4ss[/i] folder go into [i]ofAshAndSteel/ofAshAndSteelGame/Binaries/Win64/[/i].
+[*]Extract the mod zip into the game folder [i]ofAshAndSteel/[/i]. The mod ends up in [i]ofAshAndSteelGame/Binaries/Win64/ue4ss/Mods/FairCombat/[/i].
+[*]Steam Deck / Linux (Proton): add [i]WINEDLLOVERRIDES="dwmapi=n,b" %command%[/i] to the game's launch options.
+[/list]
+
+[size=3][b]Compatibility[/b][/size]
+
+Works with other UE4SS mods and with pak mods. Mods that change the combat AI or the hit reactions of the player may clash.
+
+[size=3][b]Source Code[/b][/size]
+
+[url=https://github.com/Gh05d/ash-and-steel-fair-combat]github.com/Gh05d/ash-and-steel-fair-combat[/url] (MIT)

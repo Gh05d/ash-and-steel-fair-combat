@@ -23,11 +23,7 @@ return {
     orbitEvery = 1.0,    -- a new move every this many seconds
     guardEvery = 8.0,    -- the guard stance is renewed this often (the game ends it after 8-12 s)
 
-    -- Turning: enemies turn towards you at the start of an attack. With turnLimit they only follow this
-    -- share of the angle (the game: about 0.92), so stepping to the side or behind them pays off.
-    turnLimit = false,   -- experimental: hooks a function that runs every frame
-    attackTracking = 0.4,
-
+    -- Turning: enemies no longer track you all the way through their attacks, so a side step pays off.
     humanTurnLimit = true,
     humanTrackTime = 0.15,  -- humans aim this long at the start of an attack, then commit to the direction
     animalTurnFactor = 0.7, -- attacking animals turn at this share of their normal speed (1 = off)

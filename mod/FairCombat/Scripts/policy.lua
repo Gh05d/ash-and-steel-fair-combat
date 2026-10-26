@@ -114,15 +114,6 @@ function Policy.orbitPoint(px, py, ex, ey, radius, angle, sign)
     return px + rx * radius, py + ry * radius
 end
 
--- Attack tracking: the game turns an attacking enemy towards you for `length` s with RInterpTo(`interp`),
--- which covers about 92 % of the angle. Returns the timeline play rate (game rate `rate` times a factor >= 1)
--- that ends the turn after `fraction` of the angle.
-function Policy.trackingRate(fraction, interp, length, rate)
-    if fraction >= 1 then return rate end
-    local k = interp * length / -math.log(1 - fraction)
-    return rate * math.max(k, 1)
-end
-
 -- Wind-up: an attack whose hit window starts `traceStart` s into the montage (at play rate 1) takes
 -- traceStart / rate in game. Returns the play rate that makes the wind-up last at least `minWindup` s.
 function Policy.windupRate(traceStart, minWindup, rate)

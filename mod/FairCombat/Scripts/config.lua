@@ -26,6 +26,8 @@ return {
     turnLimit = false,   -- experimental: hooks a function that runs every frame
     attackTracking = 0.4,
 
+    humanTurnLimit = true,
+    humanTrackTime = 0.15,  -- humans aim this long at the start of an attack, then commit to the direction
     animalTurnFactor = 0.7, -- attacking animals turn at this share of their normal speed (1 = off)
 
     tickMs = 100,        -- how often enemies are re-evaluated (ms)

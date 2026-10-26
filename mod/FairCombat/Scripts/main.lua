@@ -312,6 +312,44 @@ local function slowTurn(enemy, on)
     dbg("%s turn %s: yaw %.0f", enemy:GetFName():ToString(), on and "slow" or "normal", mv.RotationRate.Yaw)
 end
 
+-- Humans: their attack tasks start a 0.01 s timer that turns them towards the target every frame during the
+-- first half of the attack (Combat_RotateToTarget, speed 5). After humanTrackTime of an attack the mod pauses
+-- that timer and stops the turn timeline: the enemy aims briefly, then commits to the direction.
+local ATTACK_TASKS = { "AI_C_Attack_C", "AI_C_AttackCombo_C", "AI_C_AttackHeavy_C", "AI_C_AttackWithFake_C",
+    "AI_C_AttackSpecial_C", "AI_C_AttackTired_C" }
+local aiming = {}       -- controller full name -> { since = t, done = bool }
+
+local function commitAttack(enemy)
+    local world, ksl = UEHelpers.GetWorld(), UEHelpers.GetKismetSystemLibrary()
+    local me, paused = enemy:GetFullName(), 0
+    for _, cls in ipairs(ATTACK_TASKS) do
+        for _, task in ipairs(FindAllOf(cls) or {}) do
+            local p = valid(task) and task["Controlled Pawn"] or nil
+            if valid(p) and p:GetFullName() == me then
+                ksl:K2_PauseTimerHandle(world, task.Timer)
+                paused = paused + 1
+            end
+        end
+    end
+    local timeline = enemy.RotateToTarget
+    if valid(timeline) and timeline:IsPlaying() then timeline:Stop() end
+    dbg("%s commits to its attack (%d task timers paused)", enemy:GetFName():ToString(), paused)
+end
+
+local function trackHuman(id, enemy, attacking, t)
+    if not attacking then
+        aiming[id] = nil
+        return
+    end
+    local a = aiming[id]
+    if not a then
+        aiming[id] = { since = t }
+    elseif not a.done and t - a.since >= CFG.humanTrackTime then
+        a.done = true
+        commitAttack(enemy)
+    end
+end
+
 local function releaseAll()
     for id, ctrl in pairs(owned) do
         if valid(ctrl) then pcall(hold, ctrl, id, false) end
@@ -358,6 +396,10 @@ local function tick()
         local ctrl = byId[e.id]
         hold(ctrl, e.id, want)
         if CFG.animalTurnFactor < 1 and not isHuman(ctrl) then pcall(slowTurn, ctrl.Pawn, e.attacking) end
+        if CFG.humanTurnLimit and isHuman(ctrl) then
+            local ok, err = pcall(trackHuman, e.id, ctrl.Pawn, e.attacking, t)
+            if not ok then dbg("turn limit %s: %s", e.id, tostring(err)) end
+        end
         if owned[e.id] and isHuman(ctrl) then
             local ok, err = pcall(wander, ctrl, ctrl.Pawn, pawn, e.id, role, t)
             if not ok then dbg("wander %s: %s", e.id, tostring(err)) end
@@ -431,7 +473,7 @@ RegisterHook("/Script/Engine.PlayerController:ClientRestart", function()
     pcall(recoverFlag)
     pcall(clearAllHolds)
     policy:reset()
-    owned, blocking, controllers, nextScan, moves, slowed = {}, nil, {}, 0, {}, {}
+    owned, blocking, controllers, nextScan, moves, slowed, aiming = {}, nil, {}, 0, {}, {}, {}
     registerGameHooks()
 end)
 registerGameHooks()
@@ -452,7 +494,7 @@ end)
 pcall(function()
     RegisterLoadMapPostHook(function()
         policy:reset()
-        owned, blocking, controllers, nextScan, moves, slowed = {}, nil, {}, 0, {}, {}
+        owned, blocking, controllers, nextScan, moves, slowed, aiming = {}, nil, {}, 0, {}, {}, {}
     end)
 end)
 

@@ -26,6 +26,8 @@ return {
     turnLimit = false,   -- experimental: hooks a function that runs every frame
     attackTracking = 0.4,
 
+    animalTurnFactor = 0.4, -- animals fighting you turn at this share of their normal speed (1 = off)
+
     tickMs = 100,        -- how often enemies are re-evaluated (ms)
     debug = false,       -- log every decision to UE4SS.log
 }

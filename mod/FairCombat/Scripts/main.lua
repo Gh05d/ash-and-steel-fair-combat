@@ -287,6 +287,29 @@ local function hold(ctrl, id, want)
     end
 end
 
+-- Animals turn with their movement component (bUseControllerDesiredRotation, e.g. 90-180 deg/s). While
+-- they fight the player they turn at animalTurnFactor of that; the class default is the original.
+local slowed = {}       -- movement component full name -> movement component
+
+local function defaultYaw(enemy)
+    local cdo = enemy:GetClass():GetCDO()
+    local mv = valid(cdo) and cdo.CharacterMovement or nil
+    return valid(mv) and mv.RotationRate.Yaw or nil
+end
+
+local function slowTurn(enemy, on)
+    local mv = enemy.CharacterMovement
+    if not valid(mv) then return end
+    local name = mv:GetFullName()
+    if on == (slowed[name] ~= nil) then return end
+    local yaw = defaultYaw(enemy)
+    if not yaw then return end
+    local r = mv.RotationRate
+    mv.RotationRate = { Pitch = r.Pitch, Yaw = on and yaw * CFG.animalTurnFactor or yaw, Roll = r.Roll }
+    slowed[name] = on and mv or nil
+    dbg("%s turn %s: yaw %.0f", enemy:GetFName():ToString(), on and "slow" or "normal", mv.RotationRate.Yaw)
+end
+
 local function releaseAll()
     for id, ctrl in pairs(owned) do
         if valid(ctrl) then pcall(hold, ctrl, id, false) end
@@ -332,9 +355,18 @@ local function tick()
             or (CFG.antiStunlock and not e.ranged and not policy:available(t, e.id))
         local ctrl = byId[e.id]
         hold(ctrl, e.id, want)
+        if CFG.animalTurnFactor < 1 and not isHuman(ctrl) then pcall(slowTurn, ctrl.Pawn, true) end
         if owned[e.id] and isHuman(ctrl) then
             local ok, err = pcall(wander, ctrl, ctrl.Pawn, pawn, e.id, role, t)
             if not ok then dbg("wander %s: %s", e.id, tostring(err)) end
+        end
+    end
+    for name, mv in pairs(slowed) do -- animals that left the fight turn normally again
+        local enemy = valid(mv) and mv:GetOwner() or nil
+        local ctrl = valid(enemy) and enemy.Controller or nil
+        if not valid(ctrl) or not byId[ctrl:GetFullName()] then
+            if valid(enemy) then pcall(slowTurn, enemy, false) end
+            slowed[name] = nil
         end
     end
     for id, ctrl in pairs(owned) do -- left the fight, died or no longer targets the player
@@ -353,6 +385,15 @@ local function clearAllHolds()
     for _, ctrl in ipairs(FindAllOf(HUMAN) or {}) do
         local bb = valid(ctrl) and ctrl.Blackboard or nil
         if valid(bb) and bb:GetValueAsBool(key("DefenceMode?")) then bb:SetValueAsBool(key("DefenceMode?"), false) end
+    end
+    for _, ctrl in ipairs(FindAllOf(ANIMAL) or {}) do -- turn rates back to the class default
+        local enemy = valid(ctrl) and ctrl.Pawn or nil
+        local mv = valid(enemy) and enemy.CharacterMovement or nil
+        local yaw = valid(mv) and defaultYaw(enemy) or nil
+        if yaw and mv.RotationRate.Yaw ~= yaw then
+            local r = mv.RotationRate
+            mv.RotationRate = { Pitch = r.Pitch, Yaw = yaw, Roll = r.Roll }
+        end
     end
 end
 
@@ -386,8 +427,9 @@ RegisterHook("/Script/Engine.PlayerController:ClientRestart", function()
     pcall(releaseAll)
     pcall(unblock)
     pcall(recoverFlag)
+    pcall(clearAllHolds)
     policy:reset()
-    owned, blocking, controllers, nextScan, moves = {}, nil, {}, 0, {}
+    owned, blocking, controllers, nextScan, moves, slowed = {}, nil, {}, 0, {}, {}
     registerGameHooks()
 end)
 registerGameHooks()
@@ -408,7 +450,7 @@ end)
 pcall(function()
     RegisterLoadMapPostHook(function()
         policy:reset()
-        owned, blocking, controllers, nextScan, moves = {}, nil, {}, 0, {}
+        owned, blocking, controllers, nextScan, moves, slowed = {}, nil, {}, 0, {}, {}
     end)
 end)
 

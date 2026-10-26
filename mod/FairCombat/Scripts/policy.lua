@@ -69,6 +69,12 @@ function Policy:hit(now, id, reaction, ranged)
     end
     if reaction ~= "stagger" and reaction ~= "knock" then return end
     if not self:mayStagger(now) then return end
+    self:restart(now, id, reaction, ranged)
+end
+
+-- Opens a new protection window from now. Also used when the mod could not cancel a stagger the player got
+-- inside a window: then the player recovers from this one, and window, grace and lock start over.
+function Policy:restart(now, id, reaction, ranged)
     local length = reaction == "knock" and self.cfg.knockWindow or self.cfg.staggerWindow
     local to = now + length
     local grace = reaction == "knock" and self.cfg.knockGrace or self.cfg.staggerGrace

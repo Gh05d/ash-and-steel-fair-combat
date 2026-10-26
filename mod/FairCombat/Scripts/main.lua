@@ -35,6 +35,7 @@ local ATTACKING = { [0] = true, [11] = true, [12] = true } -- Character_CombatSt
 local SWING_MAX = 1.5                               -- safety: invincibility for one swing never lasts longer (s)
 local SCAN_MS = 1500                                -- how often the list of AI controllers is rebuilt
 local SAME_HIT = 0.02                               -- Reaction and GotHit of one hit run in the same frame (s)
+local RETRY_MS = 50                                 -- second try to cancel a reaction montage that started late
 local HUMAN = "GS_AI_NPCController_C"               -- human NPCs; animals have GS_AI_AnimalController_C
 local ANIMAL = "GS_AI_AnimalController_C"
 local ANIMAL_HELD = 10                              -- SimpleAttackCounter this high: animals taunt and dodge instead of biting
@@ -172,7 +173,26 @@ local function onGotHit(ctx, _impact, _damage, _stamina, _stagger, _direction, a
             local stop = Policy.isReactionMontage(name)
             if stop then anim:Montage_Stop(0.15, montage) end
             dbg("hit by %s (%s, %s): %s %s", id, protected or (mayHit and "grace" or "locked"), reaction,
-                stop and "cancelled" or "left running", tostring(name))
+                stop and "cancelled" or "retry", tostring(name))
+            if not stop then
+                -- the reaction montage can start a frame later; if it still can't be found, the player really
+                -- got staggered and the protection starts over from now
+                local kind = reaction
+                ExecuteInGameThreadWithDelay(RETRY_MS, function()
+                    pcall(function()
+                        local m = valid(anim) and anim:GetCurrentActiveMontage() or nil
+                        local n = valid(m) and m:GetFName():ToString() or nil
+                        if Policy.isReactionMontage(n) then
+                            anim:Montage_Stop(0.15, m)
+                            dbg("retry cancelled %s", n)
+                        else
+                            local t2 = now()
+                            if t2 then policy:restart(t2, id, kind, ranged) end
+                            dbg("could not cancel (%s): protection starts over", tostring(n))
+                        end
+                    end)
+                end)
+            end
             reaction = "none"
         end
         policy:hit(t, id, CFG.antiStunlock and reaction or "none", ranged)
@@ -183,6 +203,8 @@ end
 
 -- After an enemy's EnableTrace (start/end of one swing): block the player's hits while an enemy swings
 -- that may not hit right now (used its hit in the window, or waits for the player to recover).
+local swings = {}       -- controller full name -> true while that enemy's swing is active
+
 local function onEnemyTrace(ctx, enable)
     local ok, err = pcall(function()
         if not CFG.antiStunlock then return end
@@ -192,6 +214,7 @@ local function onEnemyTrace(ctx, enable)
         local ctrl = enemy.Controller
         if not valid(ctrl) then return end
         local id = ctrl:GetFullName()
+        swings[id] = on or nil
         if not on then
             if blocking and blocking.id == id then unblock() end
             return
@@ -364,6 +387,15 @@ local function tick()
     local t = now()
     if not t then return end
     if blocking and t - blocking.since > SWING_MAX then unblock() end
+    -- a swing that started before its enemy got locked (e.g. the window ended mid-swing) is blocked now
+    if CFG.antiStunlock and not blocking then
+        for id in pairs(swings) do
+            if not policy:mayHit(t, id, false) then
+                block(id, t)
+                break
+            end
+        end
+    end
     local pawn = playerPawn()
     if not pawn then return end
     if t >= nextScan then
@@ -476,7 +508,7 @@ RegisterHook("/Script/Engine.PlayerController:ClientRestart", function()
     pcall(recoverFlag)
     pcall(clearAllHolds)
     policy:reset()
-    owned, blocking, controllers, nextScan, moves, slowed, aiming = {}, nil, {}, 0, {}, {}, {}
+    owned, blocking, controllers, nextScan, moves, slowed, aiming, swings = {}, nil, {}, 0, {}, {}, {}, {}
     registerGameHooks()
 end)
 registerGameHooks()
@@ -497,7 +529,7 @@ end)
 pcall(function()
     RegisterLoadMapPostHook(function()
         policy:reset()
-        owned, blocking, controllers, nextScan, moves, slowed, aiming = {}, nil, {}, 0, {}, {}, {}
+        owned, blocking, controllers, nextScan, moves, slowed, aiming, swings = {}, nil, {}, 0, {}, {}, {}, {}
     end)
 end)
 

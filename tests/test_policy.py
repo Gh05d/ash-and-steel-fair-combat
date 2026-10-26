@@ -284,3 +284,13 @@ class GraceTest(PolicyCase):
         self.hit(0.0, 'A', 'stagger')
         self.hit(2.0, 'B', 'stagger')
         self.assertIsNone(self.p.protection(self.p, 2.1))
+
+
+class RestartTest(PolicyCase):
+    def test_uncancelled_stagger_restarts_protection(self):
+        self.hit(0.0, 'A', 'stagger')
+        self.p.restart(self.p, 1.6, 'A', 'stagger', False)
+        self.assertEqual(self.p.protection(self.p, 2.9), 'stagger')
+        self.assertFalse(self.p.mayStagger(self.p, 4.5))
+        self.assertTrue(self.p.mayStagger(self.p, 4.7))
+        self.assertFalse(self.may_hit(3.5, 'A'))

@@ -288,7 +288,9 @@ local function hold(ctrl, id, want)
 end
 
 -- Animals turn with their movement component (bUseControllerDesiredRotation, e.g. 90-180 deg/s). While
--- they fight the player they turn at animalTurnFactor of that; the class default is the original.
+-- they attack the player they turn at animalTurnFactor of that, so a side step during a bite pays off; lining
+-- up for an attack stays at full speed (slower made them never face the player, so they never bit).
+-- The class default is the original.
 local slowed = {}       -- movement component full name -> movement component
 
 local function defaultYaw(enemy)
@@ -343,7 +345,7 @@ local function tick()
                 local module = component(enemy, ENEMY)
                 local attacking = module ~= nil and ATTACKING[module.CombatState] == true
                 policy:observe(t, id, bb:GetValueAsInt(key("ComboAttackCounter")), attacking)
-                enemies[#enemies + 1] = { id = id, dist = dist, ranged = isRanged(dist), targetsPlayer = true }
+                enemies[#enemies + 1] = { id = id, dist = dist, ranged = isRanged(dist), targetsPlayer = true, attacking = attacking }
                 byId[id] = ctrl
             end
         end
@@ -355,7 +357,7 @@ local function tick()
             or (CFG.antiStunlock and not e.ranged and not policy:available(t, e.id))
         local ctrl = byId[e.id]
         hold(ctrl, e.id, want)
-        if CFG.animalTurnFactor < 1 and not isHuman(ctrl) then pcall(slowTurn, ctrl.Pawn, true) end
+        if CFG.animalTurnFactor < 1 and not isHuman(ctrl) then pcall(slowTurn, ctrl.Pawn, e.attacking) end
         if owned[e.id] and isHuman(ctrl) then
             local ok, err = pcall(wander, ctrl, ctrl.Pawn, pawn, e.id, role, t)
             if not ok then dbg("wander %s: %s", e.id, tostring(err)) end

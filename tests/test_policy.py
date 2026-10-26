@@ -294,3 +294,23 @@ class RestartTest(PolicyCase):
         self.assertFalse(self.p.mayStagger(self.p, 4.5))
         self.assertTrue(self.p.mayStagger(self.p, 4.7))
         self.assertFalse(self.may_hit(3.5, 'A'))
+
+
+class WindupTest(unittest.TestCase):
+    def setUp(self):
+        lua, _ = load_policy()
+        self.policy = lua.eval('(require("policy"))')
+
+    def test_short_windup_is_stretched(self):
+        # trace at 0.15 s, wanted 0.35 s: rate 0.15/0.35 makes the wind-up take 0.35 s, whatever the old rate
+        self.assertAlmostEqual(self.policy.windupRate(0.15, 0.35, 1.2), 0.15 / 0.35)
+
+    def test_long_windup_untouched(self):
+        self.assertEqual(self.policy.windupRate(0.6, 0.35, 1.2), 1.2)
+
+    def test_game_speedup_counts(self):
+        # at rate 2 the 0.3 s wind-up only takes 0.15 s, so it gets stretched as well
+        self.assertAlmostEqual(self.policy.windupRate(0.3, 0.35, 2.0), 0.3 / 0.35)
+
+    def test_trace_at_start_is_left_alone(self):
+        self.assertEqual(self.policy.windupRate(0.0, 0.35, 1.0), 1.0)

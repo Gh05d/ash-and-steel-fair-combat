@@ -18,6 +18,7 @@ local VERSION = "0.1.0"
 local UEHelpers = require("UEHelpers")
 local CFG = require("config")
 local Policy = require("policy")
+local WINDUPS = require("windups")
 
 local PLAYER = "/Game/Components/Combat/CombatModule_Player.CombatModule_Player_C"
 local ENEMY = "/Game/Components/Combat/CombatModule_AI_Humanoid.CombatModule_AI_Humanoid_C"
@@ -28,6 +29,7 @@ local P = {
     knock = PLAYER .. ":Knock",
     enemyTrace = ENEMY .. ":EnableTrace",
     rotate = "/Game/Characters/NPC/NPC_Parent/Base_NPC.Base_NPC_C:Combat_RotateToTarget",
+    attackStart = "/Game/Components/Combat/AnimNotify/GS_RotateToEnemyAI.GS_RotateToEnemyAI_C:Received_NotifyBegin",
 }
 local ROTATE_LENGTH = 0.5                           -- length of Base_NPC's RotateToTarget timeline (s)
 local IN_COMBAT = 6                                 -- blackboard Status "inCombat"
@@ -204,6 +206,43 @@ end
 -- After an enemy's EnableTrace (start/end of one swing): block the player's hits while an enemy swings
 -- that may not hit right now (used its hit in the window, or waits for the player to recover).
 local swings = {}       -- controller full name -> true while that enemy's swing is active
+local stretched = {}    -- controller full name -> { anim, montage, rate, since } while its wind-up is slowed
+
+local function unstretch(id)
+    local w = stretched[id]
+    stretched[id] = nil
+    if w and valid(w.anim) and valid(w.montage) then w.anim:Montage_SetPlayRate(w.montage, w.rate) end
+end
+
+-- After GS_RotateToEnemyAI begins (frame one of an enemy attack, once per attack): attacks whose hit window
+-- opens very early (windups.lua) play slower until the swing starts, so they can be read.
+local function onAttackStart(_ctx, meshComp, animation)
+    local ok, err = pcall(function()
+        if not CFG.windup then return end
+        local montage = animation:get()
+        local trace = valid(montage) and WINDUPS[montage:GetFName():ToString()] or nil
+        if not trace then return end
+        local mesh = meshComp:get()
+        local enemy = valid(mesh) and mesh:GetOwner() or nil
+        local ctrl = valid(enemy) and enemy.Controller or nil
+        local pc, pawn = UEHelpers.GetPlayerController(), playerPawn()
+        if not valid(ctrl) or not pawn or (valid(pc) and ctrl:GetFullName() == pc:GetFullName()) then return end -- never the player's own attacks
+        local bb = ctrl.Blackboard
+        local target = valid(bb) and bb:GetValueAsObject(key("Target")) or nil
+        if not valid(target) or target:GetFullName() ~= pawn:GetFullName() then return end
+        local anim = mesh:GetAnimInstance()
+        if not valid(anim) then return end
+        local rate = anim:Montage_GetPlayRate(montage)
+        local slow = Policy.windupRate(trace, CFG.minWindup, rate)
+        if slow >= rate then return end
+        local id = ctrl:GetFullName()
+        unstretch(id)
+        anim:Montage_SetPlayRate(montage, slow)
+        stretched[id] = { anim = anim, montage = montage, rate = rate, since = now() or 0 }
+        dbg("wind-up %s: rate %.2f -> %.2f", montage:GetFName():ToString(), rate, slow)
+    end)
+    if not ok then log("attack start hook error: %s", tostring(err)) end
+end
 
 local function onEnemyTrace(ctx, enable)
     local ok, err = pcall(function()
@@ -215,6 +254,7 @@ local function onEnemyTrace(ctx, enable)
         if not valid(ctrl) then return end
         local id = ctrl:GetFullName()
         swings[id] = on or nil
+        if on then unstretch(id) end -- the swing itself plays at normal speed
         if not on then
             if blocking and blocking.id == id then unblock() end
             return
@@ -387,6 +427,9 @@ local function tick()
     local t = now()
     if not t then return end
     if blocking and t - blocking.since > SWING_MAX then unblock() end
+    for id, w in pairs(stretched) do
+        if t - w.since > SWING_MAX then unstretch(id) end
+    end
     -- a swing that started before its enemy got locked (e.g. the window ended mid-swing) is blocked now
     if CFG.antiStunlock and not blocking then
         for id in pairs(swings) do
@@ -484,6 +527,7 @@ local function registerGameHooks()
     local hooks = {
         { P.gitHit, onGitHit, "GitHit" }, { P.knock, onKnock, "Knock" }, { P.reaction, onReaction, "Reaction" },
         { P.gotHit, onGotHit, "GotHit" }, { P.enemyTrace, onEnemyTrace, "enemy EnableTrace" },
+        { P.attackStart, onAttackStart, "attack start (GS_RotateToEnemyAI)" },
     }
     -- Combat_RotateToTarget fires up to ~70 times per second (live 2026-10-26): never hook it by default.
     if CFG.turnLimit then hooks[#hooks + 1] = { P.rotate, onRotate, "Combat_RotateToTarget" } end
@@ -508,7 +552,7 @@ RegisterHook("/Script/Engine.PlayerController:ClientRestart", function()
     pcall(recoverFlag)
     pcall(clearAllHolds)
     policy:reset()
-    owned, blocking, controllers, nextScan, moves, slowed, aiming, swings = {}, nil, {}, 0, {}, {}, {}, {}
+    owned, blocking, controllers, nextScan, moves, slowed, aiming, swings, stretched = {}, nil, {}, 0, {}, {}, {}, {}, {}
     registerGameHooks()
 end)
 registerGameHooks()
@@ -529,7 +573,7 @@ end)
 pcall(function()
     RegisterLoadMapPostHook(function()
         policy:reset()
-        owned, blocking, controllers, nextScan, moves, slowed, aiming, swings = {}, nil, {}, 0, {}, {}, {}, {}
+        owned, blocking, controllers, nextScan, moves, slowed, aiming, swings, stretched = {}, nil, {}, 0, {}, {}, {}, {}, {}
     end)
 end)
 

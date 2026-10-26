@@ -123,6 +123,13 @@ function Policy.trackingRate(fraction, interp, length, rate)
     return rate * math.max(k, 1)
 end
 
+-- Wind-up: an attack whose hit window starts `traceStart` s into the montage (at play rate 1) takes
+-- traceStart / rate in game. Returns the play rate that makes the wind-up last at least `minWindup` s.
+function Policy.windupRate(traceStart, minWindup, rate)
+    if traceStart < 0.05 or traceStart / rate >= minWindup then return rate end -- a trace from frame one: no wind-up to stretch
+    return traceStart / minWindup
+end
+
 -- Is this a hit reaction of the player (stagger or knockdown) and not, say, the player's own attack or a parry?
 function Policy.isReactionMontage(name)
     if type(name) ~= "string" or name:find("Parry", 1, true) then return false end

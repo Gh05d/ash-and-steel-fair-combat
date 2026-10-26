@@ -32,6 +32,11 @@ return {
     humanTrackTime = 0.15,  -- humans aim this long at the start of an attack, then commit to the direction
     animalTurnFactor = 0.7, -- attacking animals turn at this share of their normal speed (1 = off)
 
+    -- Wind-up: enemy attacks whose hit comes very early (some rapier and two-handed attacks: 0.15-0.31 s)
+    -- start slower, so the wind-up lasts at least this long. The swing itself keeps its speed.
+    windup = true,
+    minWindup = 0.35,
+
     tickMs = 100,        -- how often enemies are re-evaluated (ms)
     debug = false,       -- log every decision to UE4SS.log
 }

@@ -30,6 +30,8 @@ local P = {
     enemyTrace = ENEMY .. ":EnableTrace",
     rotate = "/Game/Characters/NPC/NPC_Parent/Base_NPC.Base_NPC_C:Combat_RotateToTarget",
     attackStart = "/Game/Components/Combat/AnimNotify/GS_RotateToEnemyAI.GS_RotateToEnemyAI_C:Received_NotifyBegin",
+    playerTrace = PLAYER .. ":EnableTrace",
+    enemyGotHit = ENEMY .. ":GotHit",
 }
 local ROTATE_LENGTH = 0.5                           -- length of Base_NPC's RotateToTarget timeline (s)
 local IN_COMBAT = 6                                 -- blackboard Status "inCombat"
@@ -144,9 +146,78 @@ end
 local function onGitHit() seen.kind = "stagger" end
 local function onKnock() seen.kind = "knock" end
 
+-- Measurement (debug only, changes nothing): for every swing of the player and of enemies fighting the
+-- player, log the closest distance at start/end, whether it touched anyone, and the frame rate. Used to find
+-- out where hits get lost (goal 3).
+local fighting = {}     -- pawn full name -> pawn of every enemy that fought the player in the last tick
+local playerSwing = nil -- { t, dist, hits, fps }
+local enemySwing = {}   -- controller full name -> { t, dist, touched, name }
+
+local function fps()
+    local ok, d = pcall(function() return UEHelpers.GetGameplayStatics():GetWorldDeltaSeconds(UEHelpers.GetWorld()) end)
+    return ok and d and d > 0 and 1 / d or 0
+end
+
+local function closestEnemy(pawn)
+    local best = nil
+    for name, enemy in pairs(fighting) do
+        if valid(enemy) then
+            local d = enemy:GetDistanceTo(pawn)
+            if not best or d < best then best = d end
+        else
+            fighting[name] = nil
+        end
+    end
+    return best
+end
+
+local function onPlayerTrace(_ctx, enable)
+    pcall(function()
+        if not CFG.debug then return end
+        local pawn = playerPawn()
+        if not pawn then return end
+        local d = closestEnemy(pawn)
+        if enable:get() then
+            playerSwing = d and { t = now() or 0, dist = d, hits = 0, fps = fps() } or nil
+        elseif playerSwing then
+            local w = playerSwing
+            playerSwing = nil
+            log("measure player swing dist=%.0f->%.0f hits=%d fps=%.0f dur=%.2f", w.dist, d or -1, w.hits, w.fps,
+                (now() or w.t) - w.t)
+        end
+    end)
+end
+
+local function onEnemyGotHit(_ctx, _impact, _damage, _stamina, _stagger, _direction, attacker)
+    pcall(function()
+        if not playerSwing then return end
+        local who, pawn = attacker:get(), playerPawn()
+        if valid(who) and pawn and who:GetFullName() == pawn:GetFullName() then playerSwing.hits = playerSwing.hits + 1 end
+    end)
+end
+
+local function measureEnemySwing(id, enemy, pawn, on)
+    if not CFG.debug then return end
+    local d = enemy:GetDistanceTo(pawn)
+    if on then
+        enemySwing[id] = { t = now() or 0, dist = d, touched = false, name = enemy:GetClass():GetFName():ToString(), fps = fps() }
+    elseif enemySwing[id] then
+        local w = enemySwing[id]
+        enemySwing[id] = nil
+        log("measure enemy swing %s dist=%.0f->%.0f touched=%s fps=%.0f dur=%.2f", w.name, w.dist, d, tostring(w.touched),
+            w.fps, (now() or w.t) - w.t)
+    end
+end
+
 -- After GotHit: only hits that reached Reaction count (not blocked, dodged or ignored ones). Inside a
 -- protection window, or from an enemy that has to wait, the stagger/knockdown the hit started is cancelled.
 local function onGotHit(ctx, _impact, _damage, _stamina, _stagger, _direction, attacker)
+    pcall(function() -- measurement: this enemy's swing reached the player (also when blocked or dodged)
+        local e = attacker:get()
+        local c = valid(e) and e.Controller or nil
+        local w = valid(c) and enemySwing[c:GetFullName()] or nil
+        if w then w.touched = true end
+    end)
     local ok, err = pcall(function()
         local t = now()
         local landed = t and seen.reacted and math.abs(seen.t - t) < SAME_HIT
@@ -255,6 +326,14 @@ local function onEnemyTrace(ctx, enable)
         local id = ctrl:GetFullName()
         swings[id] = on or nil
         if on then unstretch(id) end -- the swing itself plays at normal speed
+        local me = playerPawn()
+        if me then
+            local bb0 = ctrl.Blackboard
+            local tg = valid(bb0) and bb0:GetValueAsObject(key("Target")) or nil
+            if (valid(tg) and tg:GetFullName() == me:GetFullName()) or enemySwing[id] then
+                pcall(measureEnemySwing, id, enemy, me, on)
+            end
+        end
         if not on then
             if blocking and blocking.id == id then unblock() end
             return
@@ -463,6 +542,7 @@ local function tick()
                 policy:observe(t, id, bb:GetValueAsInt(key("ComboAttackCounter")), attacking)
                 enemies[#enemies + 1] = { id = id, dist = dist, ranged = isRanged(dist), targetsPlayer = true, attacking = attacking }
                 byId[id] = ctrl
+                fighting[enemy:GetFullName()] = enemy
             end
         end
     end
@@ -528,6 +608,7 @@ local function registerGameHooks()
         { P.gitHit, onGitHit, "GitHit" }, { P.knock, onKnock, "Knock" }, { P.reaction, onReaction, "Reaction" },
         { P.gotHit, onGotHit, "GotHit" }, { P.enemyTrace, onEnemyTrace, "enemy EnableTrace" },
         { P.attackStart, onAttackStart, "attack start (GS_RotateToEnemyAI)" },
+        { P.playerTrace, onPlayerTrace, "player EnableTrace" }, { P.enemyGotHit, onEnemyGotHit, "enemy GotHit" },
     }
     -- Combat_RotateToTarget fires up to ~70 times per second (live 2026-10-26): never hook it by default.
     if CFG.turnLimit then hooks[#hooks + 1] = { P.rotate, onRotate, "Combat_RotateToTarget" } end

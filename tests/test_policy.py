@@ -58,7 +58,7 @@ class WindowTest(PolicyCase):
         self.assertEqual(self.p.protection(self.p, 1.0), 'stagger')
         self.assertFalse(self.p.mayStagger(self.p, 1.0))
         self.assertIsNone(self.p.protection(self.p, 1.6))
-        self.assertTrue(self.p.mayStagger(self.p, 1.6))
+        self.assertFalse(self.p.mayStagger(self.p, 1.6))  # grace period follows the window
 
     def test_no_window_without_reaction(self):
         self.hit(0.0, 'A')
@@ -277,8 +277,8 @@ class GraceTest(PolicyCase):
 
     def test_knock_grace_is_longer(self):
         self.hit(0.0, 'A', 'knock')
-        self.assertFalse(self.p.mayStagger(self.p, 5.9))
-        self.assertTrue(self.p.mayStagger(self.p, 6.1))
+        self.assertFalse(self.p.mayStagger(self.p, 5.4))  # knockWindow 3.0 + knockGrace 2.5
+        self.assertTrue(self.p.mayStagger(self.p, 5.6))
 
     def test_reaction_in_grace_opens_no_window(self):
         self.hit(0.0, 'A', 'stagger')

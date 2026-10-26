@@ -71,3 +71,11 @@ Kandidaten, live zu vergleichen (Brücke, Arena):
 - Angriffsrecht live bestätigt: von 2 Kriegern wurde einer 13 s gehalten (06:21:31–45 UTC), dann Rollentausch.
 - Grenzfall: Hieb des Verursachers 0,1 s nach Sperrbeginn kam durch (Ausholen vor der Sperre → kein Block); Taumler wurde abgebrochen, nur Schaden.
 - Tiere (Woodwalker, Mauler) mit der korrigierten Fassung noch nicht getestet.
+
+## Drehung (Ziel 4), Stand 2026-10-26 nachmittags
+
+- **Menschen:** Angriffs-Tasks (`AI_C_Attack*`) starten einen 0,01-s-Timer, der in der ersten Hälfte jeder Angriffs-Animation jeden Frame `Combat_RotateToTarget(Ziel, 1, 5)` aufruft (Base_NPC-Timeline 0,5 s, `RInterpTo` 5). Hook darauf feuert bis ~74×/s → verboten, `turnLimit` aus. Werte im Bytecode fest. Offener Weg: den `Timer`-Handle des Tasks pausieren (`K2_PauseTimerHandle`; `K2_ClearAndInvalidateTimerHandle` scheitert an Out-Parameter) – live noch nicht geprüft.
+- **Tiere:** drehen über `CharacterMovement.RotationRate` (`bUseControllerDesiredRotation`; Woodwalker 90°/s, Tunnel Beast/`GS_CaveBug` 180°/s, Rover/`GS_Rhino` 90°/s) und die Task-Vorlage `GS_AI_Animal_RotateToTarget` (`Interp Speed`, nicht pro Tier instanziert).
+  - 0,4 dauerhaft → Tiere bekommen dich nie in den Biss-Kegel (`GS_ConeCheck`) und greifen nicht mehr an (Pascal: „warum greifen die mich nicht mehr an?“).
+  - **0,7 nur während des Angriffs** (CombatState 0/11/12), Original aus dem Klassen-CDO → Rover: „hat sich gut angefühlt“.
+- Namen: Tunnel Beast = `GS_CaveBug`, Rover = `GS_Rhino`, Mauler = Wolf, Woodwalker = `GS_Forester`.

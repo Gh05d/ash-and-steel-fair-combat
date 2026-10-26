@@ -164,12 +164,12 @@ local function onGotHit(ctx, _impact, _damage, _stamina, _stagger, _direction, a
 
         local protected = policy:protection(t)
         local mayHit = policy:mayHit(t, id, ranged)
-        if CFG.antiStunlock and reaction ~= "none" and (protected or not mayHit) then
+        if CFG.antiStunlock and reaction ~= "none" and (not policy:mayStagger(t) or not mayHit) then
             local anim = pawn.Mesh:GetAnimInstance()
             local montage = valid(anim) and anim:GetCurrentActiveMontage() or nil
             -- only the reaction itself: when the player was attacking, the active montage can be their own swing
             if valid(montage) and Policy.isReactionMontage(montage:GetFName():ToString()) then anim:Montage_Stop(0.15, montage) end
-            dbg("hit by %s (%s, %s): cancelled %s", id, protected or "locked", reaction,
+            dbg("hit by %s (%s, %s): cancelled %s", id, protected or (mayHit and "grace" or "locked"), reaction,
                 valid(montage) and montage:GetFName():ToString() or "?")
             reaction = "none"
         end

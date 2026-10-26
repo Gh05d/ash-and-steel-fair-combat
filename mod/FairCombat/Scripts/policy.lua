@@ -36,8 +36,11 @@ function Policy:protection(now)
     return nil
 end
 
+-- After a window comes a grace period (staggerGrace / knockGrace) in which nothing can stagger or knock the
+-- player down again; hits still deal damage and are not limited.
 function Policy:mayStagger(now)
-    return self:protection(now) == nil
+    local w = self.window
+    return not (w and now < w.graceTo)
 end
 
 -- The enemy who caused the last window waits until the player has recovered: none of its hits may land,
@@ -65,9 +68,11 @@ function Policy:hit(now, id, reaction, ranged)
         return
     end
     if reaction ~= "stagger" and reaction ~= "knock" then return end
+    if not self:mayStagger(now) then return end
     local length = reaction == "knock" and self.cfg.knockWindow or self.cfg.staggerWindow
     local to = now + length
-    self.window = { kind = reaction, from = now, to = to, causer = id }
+    local grace = reaction == "knock" and self.cfg.knockGrace or self.cfg.staggerGrace
+    self.window = { kind = reaction, from = now, to = to, graceTo = to + grace, causer = id }
     self.used = {}
     if not ranged then
         self.lock[id] = { from = to, to = to + self.cfg.recoverBuffer }

@@ -5,6 +5,8 @@ return {
     staggerWindow = 1.5,
     recoverBuffer = 0.5, -- the enemy who staggered you waits this much longer after the window
     knockWindow = 3.5,   -- protection while you are knocked down and getting up
+    staggerGrace = 1.5,  -- after the window: this long nothing can stagger or knock you down again (damage still applies)
+    knockGrace = 2.5,    -- the same after a knockdown
 
     -- Attack rights: how many melee enemies may attack you at once, and how many wait close by.
     attackRights = true,

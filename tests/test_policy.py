@@ -7,7 +7,7 @@ from luaparser import ast
 SCRIPTS = Path(__file__).resolve().parent.parent / 'mod' / 'FairCombat' / 'Scripts'
 
 DEFAULTS = {'staggerWindow': 1.5, 'recoverBuffer': 0.5, 'knockWindow': 3.0,
-            'attackers': 1, 'ready': 1, 'comboBackoff': 1.5}
+            'attackers': 1, 'ready': 1, 'comboBackoff': 1.5, 'staggerGrace': 1.5, 'knockGrace': 2.5}
 
 
 def load_policy(**overrides):
@@ -260,3 +260,27 @@ class ReactionMontageTest(unittest.TestCase):
         for name in ('GS_TH_Longs_Attack_Defence_01_Montage', 'Attack_Move_med_T_1_Montage1', 'Sword1h_Hit_Head_Front_Parry_Montage', None):
             with self.subTest(name):
                 self.assertFalse(self.policy.isReactionMontage(name))
+
+
+class GraceTest(PolicyCase):
+    def test_no_new_stagger_right_after_stagger_window(self):
+        self.hit(0.0, 'A', 'stagger')
+        self.assertFalse(self.p.mayStagger(self.p, 2.0))
+        self.assertTrue(self.p.mayStagger(self.p, 3.1))
+
+    def test_grace_does_not_limit_hits(self):
+        self.hit(0.0, 'A', 'stagger')
+        self.assertIsNone(self.p.protection(self.p, 2.0))
+        self.assertTrue(self.may_hit(2.0, 'B'))
+        self.hit(2.0, 'B')
+        self.assertTrue(self.may_hit(2.2, 'B'))
+
+    def test_knock_grace_is_longer(self):
+        self.hit(0.0, 'A', 'knock')
+        self.assertFalse(self.p.mayStagger(self.p, 5.9))
+        self.assertTrue(self.p.mayStagger(self.p, 6.1))
+
+    def test_reaction_in_grace_opens_no_window(self):
+        self.hit(0.0, 'A', 'stagger')
+        self.hit(2.0, 'B', 'stagger')
+        self.assertIsNone(self.p.protection(self.p, 2.1))

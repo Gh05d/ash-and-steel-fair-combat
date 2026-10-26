@@ -224,3 +224,23 @@ class OrbitTest(unittest.TestCase):
 
     def test_orbit_enemy_on_player(self):
         self.assertEqual(self.point((0, 0), (0, 0), 400, 0, 1), (400, 0))
+
+
+class TrackingTest(unittest.TestCase):
+    def setUp(self):
+        lua, _ = load_policy()
+        self.policy = lua.eval('(require("policy"))')
+
+    def test_full_tracking_keeps_rate(self):
+        self.assertAlmostEqual(self.policy.trackingRate(1.0, 5.0, 0.5, 1.0), 1.0)
+
+    def test_tracking_fraction(self):
+        import math
+        rate = self.policy.trackingRate(0.4, 5.0, 0.5, 1.0)
+        self.assertAlmostEqual(1 - math.exp(-5.0 * 0.5 / rate), 0.4, places=6)
+
+    def test_tracking_scales_with_game_rate(self):
+        self.assertAlmostEqual(self.policy.trackingRate(0.4, 5.0, 0.5, 2.0), 2 * self.policy.trackingRate(0.4, 5.0, 0.5, 1.0))
+
+    def test_never_slower_than_game(self):
+        self.assertEqual(self.policy.trackingRate(0.99, 5.0, 0.5, 1.0), 1.0)

@@ -21,6 +21,11 @@ return {
     orbitEvery = 1.0,    -- a new move every this many seconds
     guardEvery = 8.0,    -- the guard stance is renewed this often (the game ends it after 8-12 s)
 
+    -- Turning: enemies turn towards you at the start of an attack. With turnLimit they only follow this
+    -- share of the angle (the game: about 0.92), so stepping to the side or behind them pays off.
+    turnLimit = true,
+    attackTracking = 0.4,
+
     tickMs = 100,        -- how often enemies are re-evaluated (ms)
     debug = false,       -- log every decision to UE4SS.log
 }

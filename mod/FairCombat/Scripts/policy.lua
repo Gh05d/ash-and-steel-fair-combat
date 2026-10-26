@@ -103,6 +103,15 @@ function Policy.orbitPoint(px, py, ex, ey, radius, angle, sign)
     return px + rx * radius, py + ry * radius
 end
 
+-- Attack tracking: the game turns an attacking enemy towards you for `length` s with RInterpTo(`interp`),
+-- which covers about 92 % of the angle. Returns the timeline play rate (game rate `rate` times a factor >= 1)
+-- that ends the turn after `fraction` of the angle.
+function Policy.trackingRate(fraction, interp, length, rate)
+    if fraction >= 1 then return rate end
+    local k = interp * length / -math.log(1 - fraction)
+    return rate * math.max(k, 1)
+end
+
 -- Can this enemy attack right now (not locked, not backing off, has not used its hit in the window)?
 function Policy:available(now, id)
     if self:locked(now, id) then return false end

@@ -27,7 +27,9 @@ local P = {
     gitHit = PLAYER .. ":GitHit",
     knock = PLAYER .. ":Knock",
     enemyTrace = ENEMY .. ":EnableTrace",
+    rotate = "/Game/Characters/NPC/NPC_Parent/Base_NPC.Base_NPC_C:Combat_RotateToTarget",
 }
+local ROTATE_LENGTH = 0.5                           -- length of Base_NPC's RotateToTarget timeline (s)
 local IN_COMBAT = 6                                 -- blackboard Status "inCombat"
 local ATTACKING = { [0] = true, [11] = true, [12] = true } -- Character_CombatState Attacking, HeavyAttack, SpecialAttack
 local SWING_MAX = 1.5                               -- safety: invincibility for one swing never lasts longer (s)
@@ -251,6 +253,23 @@ end
 
 -- Humans: the attack branch of their tree only runs while "DefenceMode?" is not set. Animals: simple bites
 -- only run while SimpleAttackCounter is at most 3; their taunt resets it, so it is set again every tick.
+-- After Combat_RotateToTarget (start of an attack, taunt or dodge): the game turns the enemy towards the
+-- player for 0.5 s, almost all the way. A faster timeline ends the turn early, so side steps work.
+local function onRotate(ctx, target, _mesh, speed, interp, stop)
+    local ok, err = pcall(function()
+        if not CFG.turnLimit or stop:get() then return end
+        local pawn = playerPawn()
+        local who = target:get()
+        if not pawn or not valid(who) or who:GetFullName() ~= pawn:GetFullName() then return end
+        local timeline = ctx:get().RotateToTarget
+        if not valid(timeline) then return end
+        local rate = Policy.trackingRate(CFG.attackTracking, interp:get(), ROTATE_LENGTH, speed:get())
+        timeline:SetPlayRate(rate)
+        dbg("turn limit: rate %.2f -> %.2f", speed:get(), rate)
+    end)
+    if not ok then log("Combat_RotateToTarget hook error: %s", tostring(err)) end
+end
+
 local function hold(ctrl, id, want)
     local bb = ctrl.Blackboard
     if not valid(bb) then return end
@@ -345,6 +364,7 @@ local function registerGameHooks()
     local hooks = {
         { P.gitHit, onGitHit, "GitHit" }, { P.knock, onKnock, "Knock" }, { P.reaction, onReaction, "Reaction" },
         { P.gotHit, onGotHit, "GotHit" }, { P.enemyTrace, onEnemyTrace, "enemy EnableTrace" },
+        { P.rotate, onRotate, "Combat_RotateToTarget" },
     }
     for _, h in ipairs(hooks) do
         local path, fn, name = h[1], h[2], h[3]

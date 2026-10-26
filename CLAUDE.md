@@ -5,7 +5,7 @@ Pascals Combat-Mod: Taumel-Ketten beenden und Gegnern einen Souls-artigen Kampfr
 - **Design (freigegeben 2026-10-25):** `docs/superpowers/specs/2026-10-25-fair-combat-design.md`. Was dort mit (P) markiert ist, hat Pascal gesagt; (C) ist Claudes Entscheidung.
 - **Plan Phase 1** (Ziel 1 + Ziel 2 für Menschen): `docs/superpowers/plans/2026-10-25-fair-combat-phase1.md`. Fortschritt im git-ignorierten Ledger `.superpowers/sdd/…/progress.md`.
 - **Live-Befunde:** `docs/findings.md`.
-- Release 1.0.0 vorbereitet (2026-10-26): Ziel 3 gemessen, kein Handlungsbedarf (eigene Treffer < 1 m: 23/24). GitHub `Gh05d/ash-and-steel-fair-combat` (noch nicht angelegt), `./release.sh` wie Camp Everywhere; erste Nexus-Seite + erster Upload von Hand durch Pascal, danach Repo-Variable `NEXUSMODS_FILE_ID` + Secret `NEXUSMODS_API_KEY`. Texte: `README.md`, `docs/nexus-description.bbcode`, Bilder: `docs/nexus-art-prompts.md` → `scripts/make_nexus_images.py`.
+- **v1.0.0 released 2026-10-26** auf GitHub `Gh05d/ash-and-steel-fair-combat` (öffentlich, Branch `master`, MIT); Push per SSH ging. Der erste Nexus-Upload-Run ist erwartungsgemäß fehlgeschlagen: Pascal legt die Nexus-Seite an und lädt das erste Zip von Hand hoch, danach Repo-Variable `NEXUSMODS_FILE_ID` + Secret `NEXUSMODS_API_KEY` (Secrets setzen blockt der Classifier → Pascal). Den gescheiterten Run nicht neu starten. Texte: `README.md`, `docs/nexus-description.bbcode`; Bilder: `docs/nexus-art-prompts.md` → `scripts/make_nexus_images.py`. Ziel 3 gemessen, kein Handlungsbedarf (eigene Treffer < 1 m: 23/24). Für 1.0.1 zurückgestellt: siehe Ledger („minor (deferred)“).
 
 ## Aufbau
 

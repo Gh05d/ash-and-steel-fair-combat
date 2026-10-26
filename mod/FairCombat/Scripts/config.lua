@@ -23,7 +23,7 @@ return {
 
     -- Turning: enemies turn towards you at the start of an attack. With turnLimit they only follow this
     -- share of the angle (the game: about 0.92), so stepping to the side or behind them pays off.
-    turnLimit = true,
+    turnLimit = false,   -- experimental: hooks a function that runs every frame
     attackTracking = 0.4,
 
     tickMs = 100,        -- how often enemies are re-evaluated (ms)

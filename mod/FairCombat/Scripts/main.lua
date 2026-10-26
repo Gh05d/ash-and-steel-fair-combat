@@ -364,8 +364,9 @@ local function registerGameHooks()
     local hooks = {
         { P.gitHit, onGitHit, "GitHit" }, { P.knock, onKnock, "Knock" }, { P.reaction, onReaction, "Reaction" },
         { P.gotHit, onGotHit, "GotHit" }, { P.enemyTrace, onEnemyTrace, "enemy EnableTrace" },
-        { P.rotate, onRotate, "Combat_RotateToTarget" },
     }
+    -- Combat_RotateToTarget fires up to ~70 times per second (live 2026-10-26): never hook it by default.
+    if CFG.turnLimit then hooks[#hooks + 1] = { P.rotate, onRotate, "Combat_RotateToTarget" } end
     for _, h in ipairs(hooks) do
         local path, fn, name = h[1], h[2], h[3]
         if not hooked[path] then

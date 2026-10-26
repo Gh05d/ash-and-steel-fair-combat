@@ -112,6 +112,12 @@ function Policy.trackingRate(fraction, interp, length, rate)
     return rate * math.max(k, 1)
 end
 
+-- Is this a hit reaction of the player (stagger or knockdown) and not, say, the player's own attack or a parry?
+function Policy.isReactionMontage(name)
+    if type(name) ~= "string" or name:find("Parry", 1, true) then return false end
+    return name:find("_Hit_", 1, true) ~= nil or name:find("Knockdown", 1, true) ~= nil
+end
+
 -- Can this enemy attack right now (not locked, not backing off, has not used its hit in the window)?
 function Policy:available(now, id)
     if self:locked(now, id) then return false end

@@ -244,3 +244,19 @@ class TrackingTest(unittest.TestCase):
 
     def test_never_slower_than_game(self):
         self.assertEqual(self.policy.trackingRate(0.99, 5.0, 0.5, 1.0), 1.0)
+
+
+class ReactionMontageTest(unittest.TestCase):
+    def setUp(self):
+        lua, _ = load_policy()
+        self.policy = lua.eval('(require("policy"))')
+
+    def test_hit_and_knockdown_montages(self):
+        for name in ('Sword1h_Hit_Torso_Front_Montage', 'Longs_Hit_U_Montage', 'Sword1h_Knockdown_Front_Montage', 'Sword1h_Hit_light_Montage'):
+            with self.subTest(name):
+                self.assertTrue(self.policy.isReactionMontage(name))
+
+    def test_own_attacks_are_not_reactions(self):
+        for name in ('GS_TH_Longs_Attack_Defence_01_Montage', 'Attack_Move_med_T_1_Montage1', 'Sword1h_Hit_Head_Front_Parry_Montage', None):
+            with self.subTest(name):
+                self.assertFalse(self.policy.isReactionMontage(name))

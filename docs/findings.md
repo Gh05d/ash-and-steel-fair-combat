@@ -64,3 +64,10 @@ Kandidaten, live zu vergleichen (Brücke, Arena):
 - Warte-Varianten: A/B/C (Laufbefehl, `Strafing?`, Blackboard-Ausdauer) → Gegner folgt nur. D/E (echte Ausdauer, `SetDefenceMode`) → steht auf Abstand, tut nichts. F/G (dazu eigener Kreislauf per `MoveToLocation` + `K2_SetFocus`) → „sah gut aus, G am besten“ (Pascal). G ist eingebaut.
 - Dolch-Gegner: Hieb während der Sperre lief sichtbar weiter, Treffer geblockt („kein Schaden“). Pascal: stört nicht, „er hat mich verfehlt“.
 - Im 1 gegen 1 sind Sperren kurz (0,5 s Verursacher, 1,5 s Kombo-Rückweichen) – das Kreisen fällt kaum auf. Prüfen im Gruppenkampf (Banditen), wo Gegner in Bereitschaft/Warten länger gehalten werden.
+
+## Live-Test 2026-10-26 morgens (verfluchte Krieger, Gruppe)
+
+- Pascal: „hat sich gut angefühlt“.
+- Angriffsrecht live bestätigt: von 2 Kriegern wurde einer 13 s gehalten (06:21:31–45 UTC), dann Rollentausch.
+- Grenzfall: Hieb des Verursachers 0,1 s nach Sperrbeginn kam durch (Ausholen vor der Sperre → kein Block); Taumler wurde abgebrochen, nur Schaden.
+- Tiere (Woodwalker, Mauler) mit der korrigierten Fassung noch nicht getestet.

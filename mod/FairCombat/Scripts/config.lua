@@ -3,7 +3,7 @@ return {
     -- Anti-stunlock: after you stagger, no new stagger for this long (damage still applies).
     antiStunlock = true,
     staggerWindow = 1.5,
-    recoverBuffer = 0.5, -- the enemy who staggered you waits this much longer after the window
+    recoverBuffer = 1.0, -- the enemy who staggered you waits this much longer after the window
     knockWindow = 3.5,   -- protection while you are knocked down and getting up
     staggerGrace = 1.5,  -- after the window: this long nothing can stagger or knock you down again (damage still applies)
     knockGrace = 2.5,    -- the same after a knockdown

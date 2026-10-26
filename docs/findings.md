@@ -79,3 +79,10 @@ Kandidaten, live zu vergleichen (Brücke, Arena):
   - 0,4 dauerhaft → Tiere bekommen dich nie in den Biss-Kegel (`GS_ConeCheck`) und greifen nicht mehr an (Pascal: „warum greifen die mich nicht mehr an?“).
   - **0,7 nur während des Angriffs** (CombatState 0/11/12), Original aus dem Klassen-CDO → Rover: „hat sich gut angefühlt“.
 - Namen: Tunnel Beast = `GS_CaveBug`, Rover = `GS_Rhino`, Mauler = Wolf, Woodwalker = `GS_Forester`.
+
+## Rhythmus nach Rover-Stunlock (2026-10-26 abends)
+
+- Rover-Tod: jeder Treffer regelkonform, zusammen aber kaum Luft (Niederschlag → 1,2 s → Taumler …). Dazu Bug: Abbruch stoppte Pascals eigenen Angriff statt der Treffer-Montage.
+- Geändert: nur Treffer-Montages stoppen (`isReactionMontage`); Atempause nach jedem Fenster (`staggerGrace` 1,5 s, `knockGrace` 2,5 s, kein neuer Taumler/Niederschlag, Schaden ja); Verursacher wartet 1,0 s nach dem Fenster (`recoverBuffer`, vorher 0,5); Hiebe, die vor Sperrbeginn liefen, werden im Takt geblockt; zweiter Abbruchversuch nach 50 ms, sonst startet der Schutz neu (`restart`).
+- Ergebnis 2 Kämpfe (Tier): echte Taumler etwa alle 7 s, dazwischen alles abgefangen. Pascal: „war ok“.
+- Offen: Bei eigenem Zweihänder-Angriff (`GS_TH_Longs_Attack_Defence_01_Montage`) findet der Mod die Treffer-Montage nicht – unklar, ob der Treffer dann überhaupt unterbricht.

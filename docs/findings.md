@@ -74,7 +74,7 @@ Kandidaten, live zu vergleichen (Brücke, Arena):
 
 ## Drehung (Ziel 4), Stand 2026-10-26 nachmittags
 
-- **Menschen:** Angriffs-Tasks (`AI_C_Attack*`) starten einen 0,01-s-Timer, der in der ersten Hälfte jeder Angriffs-Animation jeden Frame `Combat_RotateToTarget(Ziel, 1, 5)` aufruft (Base_NPC-Timeline 0,5 s, `RInterpTo` 5). Hook darauf feuert bis ~74×/s → verboten, `turnLimit` aus. Werte im Bytecode fest. Offener Weg: den `Timer`-Handle des Tasks pausieren (`K2_PauseTimerHandle`; `K2_ClearAndInvalidateTimerHandle` scheitert an Out-Parameter) – live noch nicht geprüft.
+- **Menschen:** Angriffs-Tasks (`AI_C_AttackCombo/Heavy/WithFake/Special`) starten einen 0,01-s-Timer, der in der ersten Hälfte jeder Angriffs-Animation jeden Frame `Combat_RotateToTarget(Ziel, 1, 5)` aufruft (Base_NPC-Timeline 0,5 s, `RInterpTo` 5). Ein Hook darauf feuert bis ~74×/s → nie hooken (die experimentelle Variante ist aus 1.0.0 entfernt). Umgesetzt: nach `humanTrackTime` 0,15 s den `Timer`-Handle des Tasks pausieren (`K2_PauseTimerHandle`; `K2_ClearAndInvalidateTimerHandle` scheitert am Out-Parameter) und die Timeline stoppen. Live (Gruppe Menschen): 23 Angriffe, bei 17 Timer pausiert, keine Fehler, Pascal: „gut angefühlt“.
 - **Tiere:** drehen über `CharacterMovement.RotationRate` (`bUseControllerDesiredRotation`; Woodwalker 90°/s, Tunnel Beast/`GS_CaveBug` 180°/s, Rover/`GS_Rhino` 90°/s) und die Task-Vorlage `GS_AI_Animal_RotateToTarget` (`Interp Speed`, nicht pro Tier instanziert).
   - 0,4 dauerhaft → Tiere bekommen dich nie in den Biss-Kegel (`GS_ConeCheck`) und greifen nicht mehr an (Pascal: „warum greifen die mich nicht mehr an?“).
   - **0,7 nur während des Angriffs** (CombatState 0/11/12), Original aus dem Klassen-CDO → Rover: „hat sich gut angefühlt“.

@@ -42,7 +42,7 @@ gh release create "$TAG" "$ZIP" \
     --notes "$(cat <<NOTES
 ## Fair Combat ${TAG}
 
-Ends stunlock chains in Of Ash and Steel and gives enemies a Souls-like rhythm: after a stagger or knockdown you get a moment to recover, the enemy who hit you lands one follow-up and then waits, only one or two melee enemies attack at once while the others circle you, enemies commit to their attack direction, and the fastest wind-ups are readable. Works for humans and animals.
+Ends stunlock chains in Of Ash and Steel and gives enemies a Souls-like rhythm: after a stagger or knockdown you get a moment to recover, the enemy who hit you lands one follow-up and then waits, only one melee enemy attacks at a time while the others circle you, enemies commit to their attack direction, and the fastest wind-ups are readable. Works for humans and animals.
 
 ### Installation
 1. Install [UE4SS](https://github.com/UE4SS-RE/RE-UE4SS/releases/tag/experimental-latest) (experimental build) into \`ofAshAndSteelGame/Binaries/Win64/\`

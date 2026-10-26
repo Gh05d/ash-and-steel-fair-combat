@@ -315,34 +315,26 @@ end
 
 local function onEnemyTrace(ctx, enable)
     local ok, err = pcall(function()
-        if not CFG.antiStunlock then return end
         local on = enable:get()
         local enemy = ctx:get():GetOwner()
         if not valid(enemy) then return end
         local ctrl = enemy.Controller
         if not valid(ctrl) then return end
         local id = ctrl:GetFullName()
-        swings[id] = on or nil
         if on then unstretch(id) end -- the swing itself plays at normal speed
         local me = playerPawn()
-        if me then
-            local bb0 = ctrl.Blackboard
-            local tg = valid(bb0) and bb0:GetValueAsObject(key("Target")) or nil
-            if (valid(tg) and tg:GetFullName() == me:GetFullName()) or enemySwing[id] then
-                pcall(measureEnemySwing, id, enemy, me, on)
-            end
-        end
+        local bb = ctrl.Blackboard
+        local target = valid(bb) and bb:GetValueAsObject(key("Target")) or nil
+        local atMe = me ~= nil and valid(target) and target:GetFullName() == me:GetFullName()
+        swings[id] = (on and atMe) or nil
+        if me and (atMe or enemySwing[id]) then pcall(measureEnemySwing, id, enemy, me, on) end
         if not on then
             if blocking and blocking.id == id then unblock() end
             return
         end
-        local pawn = playerPawn()
         local t = now()
-        if not pawn or not t or blocking then return end
-        local bb = ctrl.Blackboard
-        local target = valid(bb) and bb:GetValueAsObject(key("Target")) or nil
-        if not valid(target) or target:GetFullName() ~= pawn:GetFullName() then return end
-        if not policy:mayHit(t, id, isRanged(enemy:GetDistanceTo(pawn))) then block(id, t) end
+        if not CFG.antiStunlock or not atMe or not t or blocking then return end
+        if not policy:mayHit(t, id, isRanged(enemy:GetDistanceTo(me))) then block(id, t) end
     end)
     if not ok then log("EnableTrace hook error: %s", tostring(err)) end
 end
@@ -441,8 +433,8 @@ end
 -- Humans: their attack tasks start a 0.01 s timer that turns them towards the target every frame during the
 -- first half of the attack (Combat_RotateToTarget, speed 5). After humanTrackTime of an attack the mod pauses
 -- that timer and stops the turn timeline: the enemy aims briefly, then commits to the direction.
-local ATTACK_TASKS = { "AI_C_Attack_C", "AI_C_AttackCombo_C", "AI_C_AttackHeavy_C", "AI_C_AttackWithFake_C",
-    "AI_C_AttackSpecial_C", "AI_C_AttackTired_C" }
+-- (AI_C_Attack and AI_C_AttackTired never start that timer)
+local ATTACK_TASKS = { "AI_C_AttackCombo_C", "AI_C_AttackHeavy_C", "AI_C_AttackWithFake_C", "AI_C_AttackSpecial_C" }
 local aiming = {}       -- controller full name -> { since = t, done = bool }
 
 local function commitAttack(enemy)
@@ -523,7 +515,7 @@ local function tick()
                 policy:observe(t, id, bb:GetValueAsInt(key("ComboAttackCounter")), attacking)
                 enemies[#enemies + 1] = { id = id, dist = dist, ranged = isRanged(dist), targetsPlayer = true, attacking = attacking }
                 byId[id] = ctrl
-                fighting[enemy:GetFullName()] = enemy
+                if CFG.debug then fighting[enemy:GetFullName()] = enemy end
             end
         end
     end
@@ -557,6 +549,7 @@ local function tick()
             if valid(ctrl) then pcall(hold, ctrl, id, false) end
             owned[id] = nil
             moves[id] = nil
+            swings[id] = nil
             policy:forget(id)
         end
     end
@@ -589,8 +582,11 @@ local function registerGameHooks()
         { P.gitHit, onGitHit, "GitHit" }, { P.knock, onKnock, "Knock" }, { P.reaction, onReaction, "Reaction" },
         { P.gotHit, onGotHit, "GotHit" }, { P.enemyTrace, onEnemyTrace, "enemy EnableTrace" },
         { P.attackStart, onAttackStart, "attack start (GS_RotateToEnemyAI)" },
-        { P.playerTrace, onPlayerTrace, "player EnableTrace" }, { P.enemyGotHit, onEnemyGotHit, "enemy GotHit" },
     }
+    if CFG.debug then -- measurement only
+        hooks[#hooks + 1] = { P.playerTrace, onPlayerTrace, "player EnableTrace" }
+        hooks[#hooks + 1] = { P.enemyGotHit, onEnemyGotHit, "enemy GotHit" }
+    end
     -- never hook Base_NPC:Combat_RotateToTarget: it fires up to ~70 times per second (live 2026-10-26)
     for _, h in ipairs(hooks) do
         local path, fn, name = h[1], h[2], h[3]
@@ -613,7 +609,7 @@ RegisterHook("/Script/Engine.PlayerController:ClientRestart", function()
     pcall(recoverFlag)
     pcall(clearAllHolds)
     policy:reset()
-    owned, blocking, controllers, nextScan, moves, slowed, aiming, swings, stretched = {}, nil, {}, 0, {}, {}, {}, {}, {}
+    owned, blocking, controllers, nextScan, moves, slowed, aiming, swings, stretched, fighting = {}, nil, {}, 0, {}, {}, {}, {}, {}, {}
     registerGameHooks()
 end)
 registerGameHooks()
@@ -623,7 +619,7 @@ pcall(recoverFlag)
 -- All Lua runs on the game thread (LoopInGameThreadWithDelay). Async loops/timers (LoopAsync, ExecuteWithDelay)
 -- run Lua on other threads at the same time and corrupted UE4SS's Lua state in Camp Everywhere.
 LoopInGameThreadWithDelay(CFG.tickMs, function()
-    if not (CFG.attackRights or CFG.antiStunlock) then return end
+    if not (CFG.attackRights or CFG.antiStunlock or CFG.windup or CFG.humanTurnLimit or CFG.animalTurnFactor < 1) then return end
     local ok, err = pcall(tick)
     if not ok then
         log("tick error: %s", tostring(err))
@@ -634,7 +630,7 @@ end)
 pcall(function()
     RegisterLoadMapPostHook(function()
         policy:reset()
-        owned, blocking, controllers, nextScan, moves, slowed, aiming, swings, stretched = {}, nil, {}, 0, {}, {}, {}, {}, {}
+        owned, blocking, controllers, nextScan, moves, slowed, aiming, swings, stretched, fighting = {}, nil, {}, 0, {}, {}, {}, {}, {}, {}
     end)
 end)
 

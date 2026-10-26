@@ -2,6 +2,7 @@
 """Builds the Nexus release zip: dist/FairCombat-<version>.zip.
 Layout starts at the game folder, so extracting into ofAshAndSteel/ puts the mod into ue4ss/Mods/."""
 import re
+import subprocess
 import zipfile
 from pathlib import Path
 
@@ -11,15 +12,17 @@ PREFIX = "ofAshAndSteelGame/Binaries/Win64/ue4ss/Mods/FairCombat/"
 
 main = (MOD / "Scripts" / "main.lua").read_text(encoding="utf-8")
 version = re.search(r'local VERSION = "([^"]+)"', main).group(1)
-if re.search(r"debug = true", (MOD / "Scripts" / "config.lua").read_text(encoding="utf-8")):
+if re.search(r"debug\s*=\s*true", (MOD / "Scripts" / "config.lua").read_text(encoding="utf-8")):
     raise SystemExit("debug is on in config.lua - turn it off before packaging")
 
 out = ROOT / "dist" / f"FairCombat-{version}.zip"
 out.parent.mkdir(exist_ok=True)
 with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
-    for f in sorted(MOD.rglob("*")):
-        if f.is_file():
-            z.write(f, PREFIX + f.relative_to(MOD).as_posix())
+    # only tracked files: nothing left behind by a test run (e.g. blocking.flag) ends up in the zip
+    tracked = subprocess.run(["git", "ls-files", "mod/FairCombat"], cwd=ROOT, capture_output=True, text=True, check=True)
+    for rel in sorted(tracked.stdout.split()):
+        f = ROOT / rel
+        z.write(f, PREFIX + f.relative_to(MOD).as_posix())
 print(out)
 with zipfile.ZipFile(out) as z:
     for i in z.infolist():

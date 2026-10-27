@@ -24,6 +24,8 @@ WHAT IT DOES
   - Archers keep shooting; they just can't stagger you again right away.
   - Enemies commit to their attack direction, so side steps work.
   - The few near-instant enemy attacks get a readable wind-up.
+  - Your melee hits stop you and the enemy for a split second, and the
+    game's hit sounds play louder.
   - Works for humans and animals.
 
 SETTINGS

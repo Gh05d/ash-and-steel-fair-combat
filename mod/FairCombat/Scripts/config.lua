@@ -35,7 +35,7 @@ return {
 
     -- Hit feedback: your melee hits stop you and the enemy for a moment, and hit sounds are louder.
     hitStopMs = 60,        -- player and enemy almost freeze this long on each of your melee hits (0 = off)
-    hitSoundVolume = 1.0,  -- volume of the game's hit sounds (it plays them at 15-50 %); false = unchanged
+    hitSoundVolume = 0.9,  -- volume of the game's hit sounds (it plays them at 15-50 %); false = unchanged
 
     tickMs = 100,        -- how often enemies are re-evaluated (ms)
     debug = false,       -- log every decision to UE4SS.log

@@ -86,3 +86,12 @@ Kandidaten, live zu vergleichen (Brücke, Arena):
 - Geändert: nur Treffer-Montages stoppen (`isReactionMontage`); Atempause nach jedem Fenster (`staggerGrace` 1,5 s, `knockGrace` 2,5 s, kein neuer Taumler/Niederschlag, Schaden ja); Verursacher wartet 1,0 s nach dem Fenster (`recoverBuffer`, vorher 0,5); Hiebe, die vor Sperrbeginn liefen, werden im Takt geblockt; zweiter Abbruchversuch nach 50 ms, sonst startet der Schutz neu (`restart`).
 - Ergebnis 2 Kämpfe (Tier): echte Taumler etwa alle 7 s, dazwischen alles abgefangen. Pascal: „war ok“.
 - Offen: Bei eigenem Zweihänder-Angriff (`GS_TH_Longs_Attack_Defence_01_Montage`) findet der Mod die Treffer-Montage nicht – unklar, ob der Treffer dann überhaupt unterbricht.
+
+## Treffer-Feedback (Ziel 6, 2026-10-27)
+
+- Pascal: Treffer fühlen sich „blutleer“ an, vor allem der Sound; Gegner „streicheln“ sich an.
+- `CombatModule_AI_Humanoid:PlaySound` spielt pro Treffer zwei Sounds per `SpawnSoundAtLocation`: einen Rüstungs-Sound aus den Maps `SoundArmorBlunt`/`SoundArmorSharp_0` (Schlüssel `Character_ArmorType`, Sounds unter `Audio_Grayshaft/01_GS_Audio/FX/Combat/Damage_To_Enemies/`) und je nach Waffe `a_gs_Sword_Hit_body_final_mix` oder `a_gs_Knife_Stab_final_mix` (für `Character_Type` 2/3 keinen). Tiere nutzen dasselbe Kampfmodul.
+- Ursache: die SoundCues selbst sind leise abgemischt: `VolumeMultiplier` 0,15–0,5 (Leder 0,20, ungeschützt/Eisen 0,25, Knochen 0,15/0,40, Körpertreffer 0,5 mit `PitchMultiplier` 0,8, Stich 0,5). Einzeln abgespielt (Ogg aus der `.uexp`) klangen sie für Pascal „besser als im Spiel“.
+- Umgesetzt: alle 11 Cues (`hitsounds.lua`) auf `hitSoundVolume` und Tonhöhe 1,0, alle 3 s erneut gesetzt. 100 % live „sehr gut“, auf Pascals Wunsch 90 %.
+- Trefferstopp: Hook `CombatModule_AI_Humanoid:GotHit` (einmal pro Treffer, p7 = Angreifer); bei Nahkampftreffern des Spielers `CustomTimeDilation` 0,05 für Spieler und Gegner, 60 ms. Live über die Brücke: 14 Treffer gegen Hesus, dann im Mod ~35 Treffer gegen Tiere, keine Fehler, danach Dilation wieder 1,0.
+- `CustomTimeDilation` schreibt das Spiel selbst nur beim Ziehen der Zweihandaxt (`TwoHandedAxe`/`TwoHandedAxeOff`) → der Mod stellt den vorherigen Wert wieder her, nicht pauschal 1,0. Globale Zeitlupe (`SetGlobalTimeDilation`) nutzen Krit, Pfeil, Rush und SlowMo-Buff.

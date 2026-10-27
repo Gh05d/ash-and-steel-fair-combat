@@ -11,9 +11,10 @@ Download: Nexus Mods or the [GitHub releases](https://github.com/Gh05d/ash-and-s
 - **Archers stay dangerous.** Ranged enemies keep shooting, from behind too. Taking them out first is up to you. Their arrows just can't stagger you again inside the protection window.
 - **Enemies commit to their attacks.** Humans aim briefly and then commit to a direction, so a side step at the right moment makes them miss. Attacking animals turn slower while they bite or charge.
 - **Readable wind-ups.** The few enemy attacks whose hit comes almost instantly (some rapier and two-handed attacks, 0.15-0.3 s) start a little slower, so you can actually see them coming. The swing itself keeps its speed.
+- **Hits that land.** Your melee hits stop you and the enemy for a split second (60 ms hit stop), and the game's own hit sounds play louder: it mixes them at 15-50 % volume, the mod plays them at 90 %. Swords sound like they cut instead of brushing past.
 - **Humans and animals.** Bandits, guards, cursed warriors, Woodwalkers, Maulers, Tunnel Beasts, Rovers and others that use the game's combat AI.
 
-Nothing in the game's files is replaced: the mod steers the game's own combat AI at runtime, so it works next to pak mods.
+Nothing in the game's files is replaced: the mod steers the game's own combat AI and sounds at runtime, so it works next to pak mods.
 
 ## Installation
 

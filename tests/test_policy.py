@@ -294,3 +294,42 @@ class WindupTest(unittest.TestCase):
 
     def test_trace_at_start_is_left_alone(self):
         self.assertEqual(self.policy.windupRate(0.0, 0.35, 1.0), 1.0)
+
+
+class HitStopTest(unittest.TestCase):
+    def setUp(self):
+        self.lua, _ = load_policy()
+        self.policy = self.lua.eval('(require("policy"))')
+
+    def stop(self, stop, t, d=0.06):
+        s = self.policy.hitStop(stop, t, d)
+        return s, (s['from'], s['to'])
+
+    def test_first_hit_starts_a_stop(self):
+        _, span = self.stop(None, 10.0)
+        self.assertEqual(span[0], 10.0)
+        self.assertAlmostEqual(span[1], 10.06)
+
+    def test_hit_during_stop_extends_it(self):
+        s, _ = self.stop(None, 10.0)
+        _, span = self.stop(s, 10.02)
+        self.assertEqual(span[0], 10.0)
+        self.assertAlmostEqual(span[1], 10.08)
+
+    def test_stop_never_exceeds_twice_the_duration(self):
+        s, _ = self.stop(None, 10.0)
+        s, _ = self.stop(s, 10.05)
+        _, span = self.stop(s, 10.10)
+        self.assertAlmostEqual(span[1], 10.12)
+
+    def test_hit_after_stop_starts_a_new_one(self):
+        s, _ = self.stop(None, 10.0)
+        _, span = self.stop(s, 10.5)
+        self.assertEqual(span[0], 10.5)
+        self.assertAlmostEqual(span[1], 10.56)
+
+    def test_stuck_only_at_the_stop_scale(self):
+        self.assertTrue(self.policy.stuck(0.05, 0.05))
+        self.assertFalse(self.policy.stuck(1.0, 0.05))
+        self.assertFalse(self.policy.stuck(0.5, 0.05))
+        self.assertFalse(self.policy.stuck(None, 0.05))

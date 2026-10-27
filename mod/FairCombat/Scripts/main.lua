@@ -10,6 +10,8 @@
 --     GotHit (player, once per hit) then counts it and cancels the stagger inside a protection window.
 --   * EnableTrace (enemy, once per swing): if this enemy may not hit right now, the player ignores hits
 --     (the game's own invincibility flag) until the swing ends.
+--   * GotHit (enemy, once per hit): a melee hit of the player stops player and enemy for a moment; the game's
+--     hit sounds play louder (hitsounds.lua).
 --   * Every tickMs: enemies fighting the player get attack rights; the others are held back through the
 --     behavior tree key "DefenceMode?" (the attack branch only runs while it is not set), raise their guard
 --     and walk around the player.
@@ -19,6 +21,7 @@ local UEHelpers = require("UEHelpers")
 local CFG = require("config")
 local Policy = require("policy")
 local WINDUPS = require("windups")
+local HIT_SOUNDS = require("hitsounds")
 
 local PLAYER = "/Game/Components/Combat/CombatModule_Player.CombatModule_Player_C"
 local ENEMY = "/Game/Components/Combat/CombatModule_AI_Humanoid.CombatModule_AI_Humanoid_C"
@@ -40,6 +43,8 @@ local SAME_HIT = 0.02                               -- Reaction and GotHit of on
 local RETRY_MS = 50                                 -- second try to cancel a reaction montage that started late
 local HUMAN = "GS_AI_NPCController_C"               -- human NPCs; animals have GS_AI_AnimalController_C
 local ANIMAL = "GS_AI_AnimalController_C"
+local STOP_SCALE = 0.05                            -- speed of player and enemy during a hit stop
+local SOUND_EVERY = 30                              -- ticks between two runs of applyHitSounds
 local ANIMAL_HELD = 10                              -- SimpleAttackCounter this high: animals taunt and dodge instead of biting
 
 -- While the mod holds the player's invincibility it leaves this file next to the script, so a script reload
@@ -186,12 +191,77 @@ local function onPlayerTrace(_ctx, enable)
     end)
 end
 
-local function onEnemyGotHit(_ctx, _impact, _damage, _stamina, _stagger, _direction, attacker)
-    pcall(function()
-        if not playerSwing then return end
+-- Hit stop: on each of the player's melee hits player and enemy run at STOP_SCALE of their speed (the actor's
+-- own time dilation, the rest of the world runs on) for hitStopMs, then get back the dilation they had.
+local stops = {}        -- actor full name -> { actor, prev = dilation before, stop = { from, to } }
+
+local function releaseStops(all, quiet)
+    local t = now()
+    local left = nil
+    for name, s in pairs(stops) do
+        if not valid(s.actor) then
+            stops[name] = nil
+        elseif all or not t or t >= s.stop.to - 0.001 or t - s.stop.from > SWING_MAX then
+            s.actor.CustomTimeDilation = s.prev
+            stops[name] = nil
+        else
+            left = math.max(left or 0, s.stop.to - t)
+        end
+    end
+    if left and not quiet then ExecuteInGameThreadWithDelay(math.max(10, math.ceil(left * 1000)), function() pcall(releaseStops) end) end
+end
+
+local function hitStop(actors, t)
+    local d = CFG.hitStopMs / 1000
+    for _, a in ipairs(actors) do
+        local name = a:GetFullName()
+        local s = stops[name]
+        if not s then
+            local prev = a.CustomTimeDilation
+            if Policy.stuck(prev, STOP_SCALE) then prev = 1.0 end
+            s = { actor = a, prev = prev }
+            stops[name] = s
+            a.CustomTimeDilation = STOP_SCALE
+        end
+        s.stop = Policy.hitStop(s.stop, t, d)
+    end
+    ExecuteInGameThreadWithDelay(CFG.hitStopMs, function() pcall(releaseStops) end)
+end
+
+-- After a script reload (Ctrl+R) the list of running stops is gone: whoever still runs at the stop scale
+-- and is not in a stop gets normal speed back.
+local function unstick(actor)
+    if valid(actor) and not stops[actor:GetFullName()] and Policy.stuck(actor.CustomTimeDilation, STOP_SCALE) then
+        actor.CustomTimeDilation = 1.0
+    end
+end
+
+-- The hit sounds are shared objects (loaded with the combat module), so they are set again every few seconds
+-- in case the game loaded them anew.
+local function applyHitSounds()
+    if not CFG.hitSoundVolume then return end
+    for _, path in ipairs(HIT_SOUNDS) do
+        local cue = StaticFindObject(path)
+        if valid(cue) then
+            if cue.VolumeMultiplier ~= CFG.hitSoundVolume then cue.VolumeMultiplier = CFG.hitSoundVolume end
+            if cue.PitchMultiplier ~= 1.0 then cue.PitchMultiplier = 1.0 end
+        end
+    end
+end
+
+-- After an enemy's GotHit (once per hit it takes): hit stop when the player hit it in melee; in debug also
+-- counts the hit for the swing measurement.
+local function onEnemyGotHit(ctx, _impact, _damage, _stamina, _stagger, _direction, attacker)
+    local ok, err = pcall(function()
         local who, pawn = attacker:get(), playerPawn()
-        if valid(who) and pawn and who:GetFullName() == pawn:GetFullName() then playerSwing.hits = playerSwing.hits + 1 end
+        if not valid(who) or not pawn or who:GetFullName() ~= pawn:GetFullName() then return end
+        if playerSwing then playerSwing.hits = playerSwing.hits + 1 end
+        local enemy = ctx:get():GetOwner()
+        local t = now()
+        if CFG.hitStopMs <= 0 or not valid(enemy) or not t or isRanged(enemy:GetDistanceTo(pawn)) then return end
+        hitStop({ enemy, pawn }, t)
     end)
+    if not ok then log("enemy GotHit hook error: %s", tostring(err)) end
 end
 
 local function measureEnemySwing(id, enemy, pawn, on)
@@ -479,6 +549,7 @@ local function tick()
     local t = now()
     if not t then return end
     if blocking and t - blocking.since > SWING_MAX then unblock() end
+    if next(stops) then releaseStops(false, true) end -- safety net for the release timer
     for id, w in pairs(stretched) do
         if t - w.since > SWING_MAX then unstretch(id) end
     end
@@ -499,6 +570,10 @@ local function tick()
             for _, c in ipairs(FindAllOf(cls) or {}) do controllers[#controllers + 1] = c end
         end
         nextScan = t + SCAN_MS / 1000
+        unstick(pawn)
+        for _, c in ipairs(controllers) do
+            if valid(c) then unstick(c.Pawn) end
+        end
     end
     local me = pawn:GetFullName()
     local enemies, byId = {}, {}
@@ -582,10 +657,10 @@ local function registerGameHooks()
         { P.gitHit, onGitHit, "GitHit" }, { P.knock, onKnock, "Knock" }, { P.reaction, onReaction, "Reaction" },
         { P.gotHit, onGotHit, "GotHit" }, { P.enemyTrace, onEnemyTrace, "enemy EnableTrace" },
         { P.attackStart, onAttackStart, "attack start (GS_RotateToEnemyAI)" },
+        { P.enemyGotHit, onEnemyGotHit, "enemy GotHit" },
     }
     if CFG.debug then -- measurement only
         hooks[#hooks + 1] = { P.playerTrace, onPlayerTrace, "player EnableTrace" }
-        hooks[#hooks + 1] = { P.enemyGotHit, onEnemyGotHit, "enemy GotHit" }
     end
     -- never hook Base_NPC:Combat_RotateToTarget: it fires up to ~70 times per second (live 2026-10-26)
     for _, h in ipairs(hooks) do
@@ -608,6 +683,7 @@ RegisterHook("/Script/Engine.PlayerController:ClientRestart", function()
     pcall(unblock)
     pcall(recoverFlag)
     pcall(clearAllHolds)
+    pcall(releaseStops, true)
     policy:reset()
     owned, blocking, controllers, nextScan, moves, slowed, aiming, swings, stretched, fighting = {}, nil, {}, 0, {}, {}, {}, {}, {}, {}
     registerGameHooks()
@@ -618,8 +694,15 @@ pcall(recoverFlag)
 
 -- All Lua runs on the game thread (LoopInGameThreadWithDelay). Async loops/timers (LoopAsync, ExecuteWithDelay)
 -- run Lua on other threads at the same time and corrupted UE4SS's Lua state in Camp Everywhere.
+local ticks = 0
 LoopInGameThreadWithDelay(CFG.tickMs, function()
-    if not (CFG.attackRights or CFG.antiStunlock or CFG.windup or CFG.humanTurnLimit or CFG.animalTurnFactor < 1) then return end
+    if ticks % SOUND_EVERY == 0 then
+        local ok, err = pcall(applyHitSounds)
+        if not ok then log("hit sounds error: %s", tostring(err)) end
+    end
+    ticks = ticks + 1
+    if not (CFG.attackRights or CFG.antiStunlock or CFG.windup or CFG.humanTurnLimit or CFG.animalTurnFactor < 1
+        or CFG.hitStopMs > 0) then return end
     local ok, err = pcall(tick)
     if not ok then
         log("tick error: %s", tostring(err))
@@ -629,6 +712,7 @@ end)
 
 pcall(function()
     RegisterLoadMapPostHook(function()
+        stops = {}
         policy:reset()
         owned, blocking, controllers, nextScan, moves, slowed, aiming, swings, stretched, fighting = {}, nil, {}, 0, {}, {}, {}, {}, {}, {}
     end)

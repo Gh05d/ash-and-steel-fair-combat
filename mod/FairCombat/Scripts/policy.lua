@@ -127,6 +127,19 @@ function Policy.isReactionMontage(name)
     return name:find("_Hit_", 1, true) ~= nil or name:find("Knockdown", 1, true) ~= nil
 end
 
+-- Hit stop: after one of the player's hits, player and enemy run almost frozen for `d` s. Returns the stop
+-- { from, to } after a hit at `now`; a hit during a running stop extends it, but never past 2 * d in total.
+function Policy.hitStop(stop, now, d)
+    if not stop or now >= stop.to then return { from = now, to = now + d } end
+    stop.to = math.max(stop.to, math.min(now + d, stop.from + 2 * d))
+    return stop
+end
+
+-- An actor still running at the hit-stop scale although no stop runs: left over from a script reload.
+function Policy.stuck(dilation, scale)
+    return type(dilation) == "number" and math.abs(dilation - scale) < 0.001
+end
+
 -- Can this enemy attack right now (not locked, not backing off, has not used its hit in the window)?
 function Policy:available(now, id)
     if self:locked(now, id) then return false end

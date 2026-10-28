@@ -127,6 +127,11 @@ function Policy.isReactionMontage(name)
     return name:find("_Hit_", 1, true) ~= nil or name:find("Knockdown", 1, true) ~= nil
 end
 
+-- A montage the engine built at runtime from a single animation (ALS transitions such as stopping or landing).
+function Policy.isDynamicMontage(name)
+    return type(name) == "string" and name:find("^AnimMontage_%d+$") ~= nil
+end
+
 -- Hit stop: after one of the player's hits, player and enemy run almost frozen for `d` s. Returns the stop
 -- { from, to } after a hit at `now`; a hit during a running stop extends it, but never past 2 * d in total.
 function Policy.hitStop(stop, now, d)

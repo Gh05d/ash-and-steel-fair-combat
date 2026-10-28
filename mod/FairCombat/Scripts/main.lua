@@ -364,17 +364,17 @@ local function onBlockParry(ctx)
         local anim = valid(pawn) and pawn.Mesh:GetAnimInstance() or nil
         local montage = valid(anim) and anim:GetCurrentActiveMontage() or nil
         local name = valid(montage) and montage:GetFName():ToString() or "-"
-        if not t or not Policy.mayParryOut(t, seen.staggerAt, CFG.parryCancel) or not Policy.isReactionMontage(name) then
-            dbg("parry press in stagger after %.2f s (%s): too early or no hit reaction", t and seen.staggerAt and t - seen.staggerAt or -1, name)
+        if not t or not Policy.mayParryOut(t, seen.staggerAt, CFG.parryCancel) then
+            dbg("parry press in stagger after %.2f s (%s): too early", t and seen.staggerAt and t - seen.staggerAt or -1, name)
             return
         end
-        anim:Montage_Stop(0.1, montage)
+        -- WasHit can outlast the reaction montage; then an ALS transition (a dynamic montage) may be playing
+        if Policy.isReactionMontage(name) or Policy.isDynamicMontage(name) then anim:Montage_Stop(0.1, montage) end
         m.CombatState = IDLE
         parrying = true
         local called, cerr = pcall(function() m["Block\\Parry"](m) end)
         parrying = false
-        dbg("parry out of stagger after %.2f s (%s)%s", t - seen.staggerAt, montage:GetFName():ToString(),
-            called and "" or ": " .. tostring(cerr))
+        dbg("parry out of stagger after %.2f s (%s)%s", t - seen.staggerAt, name, called and "" or ": " .. tostring(cerr))
     end)
     parrying = false
     if not ok then log("Block\\Parry hook error: %s", tostring(err)) end

@@ -241,6 +241,12 @@ class ReactionMontageTest(unittest.TestCase):
             with self.subTest(name):
                 self.assertFalse(self.policy.isReactionMontage(name))
 
+    def test_dynamic_montages(self):
+        self.assertTrue(self.policy.isDynamicMontage('AnimMontage_2147333299'))
+        for name in ('Longs_Hit_U_Montage', 'AnimMontage_Custom', None):
+            with self.subTest(name):
+                self.assertFalse(self.policy.isDynamicMontage(name))
+
 
 class GraceTest(PolicyCase):
     def test_no_new_stagger_right_after_stagger_window(self):

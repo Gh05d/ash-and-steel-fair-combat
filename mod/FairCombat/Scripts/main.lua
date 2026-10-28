@@ -360,11 +360,14 @@ local function onBlockParry(ctx)
         local m = ctx:get()
         if not valid(m) or m.CombatState ~= WAS_HIT then return end
         local t = now()
-        if not t or not Policy.mayParryOut(t, seen.staggerAt, CFG.parryCancel) then return end
         local pawn = m:GetOwner()
         local anim = valid(pawn) and pawn.Mesh:GetAnimInstance() or nil
         local montage = valid(anim) and anim:GetCurrentActiveMontage() or nil
-        if not valid(montage) or not Policy.isReactionMontage(montage:GetFName():ToString()) then return end
+        local name = valid(montage) and montage:GetFName():ToString() or "-"
+        if not t or not Policy.mayParryOut(t, seen.staggerAt, CFG.parryCancel) or not Policy.isReactionMontage(name) then
+            dbg("parry press in stagger after %.2f s (%s): too early or no hit reaction", t and seen.staggerAt and t - seen.staggerAt or -1, name)
+            return
+        end
         anim:Montage_Stop(0.1, montage)
         m.CombatState = IDLE
         parrying = true

@@ -33,6 +33,10 @@ return {
     windup = true,
     minWindup = 0.35,
 
+    -- Parry out of a stagger: once a stagger has run this long, pressing parry ends it and you parry (attack and
+    -- dodge still wait until the stagger is over). Knockdowns are not affected. false = off.
+    parryCancel = 0.55,
+
     -- Hit feedback: your melee hits stop you and the enemy for a moment, and hit sounds are louder.
     hitStopMs = 60,        -- player and enemy almost freeze this long on each of your melee hits (0 = off)
     hitSoundVolume = 0.9,  -- volume of the game's hit sounds (it plays them at 15-50 %); false = unchanged

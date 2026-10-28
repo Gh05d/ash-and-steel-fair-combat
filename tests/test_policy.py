@@ -333,3 +333,21 @@ class HitStopTest(unittest.TestCase):
         self.assertFalse(self.policy.stuck(1.0, 0.05))
         self.assertFalse(self.policy.stuck(0.5, 0.05))
         self.assertFalse(self.policy.stuck(None, 0.05))
+
+
+class ParryCancelTest(unittest.TestCase):
+    def setUp(self):
+        lua, _ = load_policy()
+        self.policy = lua.eval('(require("policy"))')
+
+    def test_too_early(self):
+        self.assertFalse(self.policy.mayParryOut(10.5, 10.0, 0.55))
+
+    def test_after_cancel_time(self):
+        self.assertTrue(self.policy.mayParryOut(10.55, 10.0, 0.55))
+
+    def test_no_stagger_seen(self):
+        self.assertFalse(self.policy.mayParryOut(10.0, None, 0.55))
+
+    def test_switched_off(self):
+        self.assertFalse(self.policy.mayParryOut(20.0, 10.0, False))

@@ -10,6 +10,7 @@
 --     GotHit (player, once per hit) then counts it and cancels the stagger inside a protection window.
 --   * EnableTrace (enemy, once per swing): if this enemy may not hit right now, the player ignores hits
 --     (the game's own invincibility flag) until the swing ends.
+--   * Block\Parry (player, once per press): late in a stagger a parry press ends the stagger and parries.
 --   * GotHit (enemy, once per hit): a melee hit of the player stops player and enemy for a moment; the game's
 --     hit sounds play louder (hitsounds.lua).
 --   * Every tickMs: enemies fighting the player get attack rights; the others are held back through the
@@ -34,7 +35,10 @@ local P = {
     attackStart = "/Game/Components/Combat/AnimNotify/GS_RotateToEnemyAI.GS_RotateToEnemyAI_C:Received_NotifyBegin",
     playerTrace = PLAYER .. ":EnableTrace",
     enemyGotHit = ENEMY .. ":GotHit",
+    blockParry = PLAYER .. ":Block\\Parry",
 }
+local WAS_HIT = 9                                   -- Character_CombatState WasHit (staggered)
+local IDLE = 2                                      -- Character_CombatState Idle: Block\Parry only works then
 local IN_COMBAT = 6                                 -- blackboard Status "inCombat"
 local ATTACKING = { [0] = true, [11] = true, [12] = true } -- Character_CombatState Attacking, HeavyAttack, SpecialAttack
 local SWING_MAX = 1.5                               -- safety: invincibility for one swing never lasts longer (s)
@@ -146,7 +150,10 @@ local function onReaction()
     seen.reacted = true
 end
 
-local function onGitHit() seen.kind = "stagger" end
+local function onGitHit()
+    seen.kind = "stagger"
+    seen.staggerAt = now()
+end
 local function onKnock() seen.kind = "knock" end
 
 -- Measurement (debug only, changes nothing): for every swing of the player and of enemies fighting the
@@ -340,6 +347,34 @@ local function onGotHit(ctx, _impact, _damage, _stamina, _stagger, _direction, a
         dbg("hit by %s reaction=%s ranged=%s window=%s", id, reaction, tostring(ranged), tostring(policy:protection(t)))
     end)
     if not ok then log("GotHit hook error: %s", tostring(err)) end
+end
+
+-- Parry out of a stagger: the game only takes a parry press while the player is Idle, and a stagger keeps the
+-- player in WasHit for 1.4-1.7 s. Block\Parry still runs on every press (once per press); once the stagger has
+-- run parryCancel, the mod ends it and passes the press on again.
+local parrying = false
+
+local function onBlockParry(ctx)
+    if parrying then return end -- the mod's own call below
+    local ok, err = pcall(function()
+        local m = ctx:get()
+        if not valid(m) or m.CombatState ~= WAS_HIT then return end
+        local t = now()
+        if not t or not Policy.mayParryOut(t, seen.staggerAt, CFG.parryCancel) then return end
+        local pawn = m:GetOwner()
+        local anim = valid(pawn) and pawn.Mesh:GetAnimInstance() or nil
+        local montage = valid(anim) and anim:GetCurrentActiveMontage() or nil
+        if not valid(montage) or not Policy.isReactionMontage(montage:GetFName():ToString()) then return end
+        anim:Montage_Stop(0.1, montage)
+        m.CombatState = IDLE
+        parrying = true
+        local called, cerr = pcall(function() m["Block\\Parry"](m) end)
+        parrying = false
+        dbg("parry out of stagger after %.2f s (%s)%s", t - seen.staggerAt, montage:GetFName():ToString(),
+            called and "" or ": " .. tostring(cerr))
+    end)
+    parrying = false
+    if not ok then log("Block\\Parry hook error: %s", tostring(err)) end
 end
 
 -- After an enemy's EnableTrace (start/end of one swing): block the player's hits while an enemy swings
@@ -657,7 +692,7 @@ local function registerGameHooks()
         { P.gitHit, onGitHit, "GitHit" }, { P.knock, onKnock, "Knock" }, { P.reaction, onReaction, "Reaction" },
         { P.gotHit, onGotHit, "GotHit" }, { P.enemyTrace, onEnemyTrace, "enemy EnableTrace" },
         { P.attackStart, onAttackStart, "attack start (GS_RotateToEnemyAI)" },
-        { P.enemyGotHit, onEnemyGotHit, "enemy GotHit" },
+        { P.enemyGotHit, onEnemyGotHit, "enemy GotHit" }, { P.blockParry, onBlockParry, "Block\\Parry" },
     }
     if CFG.debug then -- measurement only
         hooks[#hooks + 1] = { P.playerTrace, onPlayerTrace, "player EnableTrace" }

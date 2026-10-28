@@ -140,6 +140,12 @@ function Policy.stuck(dilation, scale)
     return type(dilation) == "number" and math.abs(dilation - scale) < 0.001
 end
 
+-- Parry out of a stagger: once the stagger (started at `staggerAt`) has run `cancel` s, a parry press ends
+-- it. Earlier presses are lost, as in the game. `cancel` false = off.
+function Policy.mayParryOut(now, staggerAt, cancel)
+    return cancel ~= false and cancel ~= nil and staggerAt ~= nil and now - staggerAt >= cancel - 1e-9
+end
+
 -- Can this enemy attack right now (not locked, not backing off, has not used its hit in the window)?
 function Policy:available(now, id)
     if self:locked(now, id) then return false end

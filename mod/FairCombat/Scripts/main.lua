@@ -576,6 +576,46 @@ local function trackHuman(id, enemy, attacking, t)
     end
 end
 
+-- Measurement (debug only): enemies near the player that turn their back and run, and changes of their
+-- blackboard Status, with what the behavior tree reads (stamina, health, combat state).
+local trail = {}        -- controller full name -> { t, dist, status, logged }
+
+local function watchRetreat(ctrl, bb, enemy, pawn, t)
+    local id = ctrl:GetFullName()
+    local dist = enemy:GetDistanceTo(pawn)
+    if dist > 1500 then
+        trail[id] = nil
+        return
+    end
+    local status = bb:GetValueAsEnum(key("Status"))
+    local tr = trail[id]
+    local function state(what)
+        local module = component(enemy, ENEMY)
+        local a, b = enemy:K2_GetActorLocation(), pawn:K2_GetActorLocation()
+        local f = enemy:GetActorForwardVector()
+        local dx, dy = b.X - a.X, b.Y - a.Y
+        local len = math.sqrt(dx * dx + dy * dy)
+        local facing = len > 1 and (f.X * dx + f.Y * dy) / len or 1
+        local v = enemy:GetVelocity()
+        log("watch %s %s: dist=%.0f status=%d stamina=%.2f health=%.2f combat=%s facing=%.2f speed=%.0f defence=%s strafing=%s",
+            enemy:GetFName():ToString(), what, dist, status, bb:GetValueAsFloat(key("Stamina")),
+            bb:GetValueAsFloat(key("Health")), module and tostring(module.CombatState) or "-", facing,
+            math.sqrt(v.X * v.X + v.Y * v.Y), tostring(bb:GetValueAsBool(key("DefenceMode?"))),
+            tostring(bb:GetValueAsBool(key("Strafing?"))))
+        return facing
+    end
+    if tr and tr.status ~= status then state(string.format("status %d -> %d", tr.status, status)) end
+    if not tr or t - tr.t >= 0.5 then
+        if tr and dist - tr.dist > 120 and t - (tr.logged or -10) > 2 then
+            state(string.format("moves away %.0f -> %.0f", tr.dist, dist))
+            tr.logged = t
+        end
+        trail[id] = { t = t, dist = dist, status = status, logged = tr and tr.logged }
+    else
+        tr.status = status
+    end
+end
+
 local function releaseAll()
     for id, ctrl in pairs(owned) do
         if valid(ctrl) then pcall(hold, ctrl, id, false) end
@@ -618,6 +658,10 @@ local function tick()
     for _, ctrl in ipairs(controllers) do
         local bb = valid(ctrl) and ctrl.Blackboard or nil
         local enemy = valid(ctrl) and ctrl.Pawn or nil
+        if CFG.debug and valid(bb) and valid(enemy) and isHuman(ctrl) then
+            local ok, err = pcall(watchRetreat, ctrl, bb, enemy, pawn, t)
+            if not ok then dbg("watch: %s", tostring(err)) end
+        end
         if valid(bb) and valid(enemy) and bb:GetValueAsEnum(key("Status")) == IN_COMBAT then
             local target = bb:GetValueAsObject(key("Target"))
             if valid(target) and target:GetFullName() == me then
@@ -723,7 +767,7 @@ RegisterHook("/Script/Engine.PlayerController:ClientRestart", function()
     pcall(clearAllHolds)
     pcall(releaseStops, true)
     policy:reset()
-    owned, blocking, controllers, nextScan, moves, slowed, aiming, swings, stretched, fighting = {}, nil, {}, 0, {}, {}, {}, {}, {}, {}
+    owned, blocking, controllers, nextScan, moves, slowed, aiming, swings, stretched, fighting, trail = {}, nil, {}, 0, {}, {}, {}, {}, {}, {}, {}
     registerGameHooks()
 end)
 registerGameHooks()
@@ -752,7 +796,7 @@ pcall(function()
     RegisterLoadMapPostHook(function()
         stops = {}
         policy:reset()
-        owned, blocking, controllers, nextScan, moves, slowed, aiming, swings, stretched, fighting = {}, nil, {}, 0, {}, {}, {}, {}, {}, {}
+        owned, blocking, controllers, nextScan, moves, slowed, aiming, swings, stretched, fighting, trail = {}, nil, {}, 0, {}, {}, {}, {}, {}, {}, {}
     end)
 end)
 

@@ -2,7 +2,7 @@
 
 A UE4SS mod for **Of Ash and Steel** that keeps fights hard but fair. No more dying in an endless chain of hit reactions, and group fights get a Souls-like rhythm.
 
-Download: Nexus Mods or the [GitHub releases](https://github.com/Gh05d/ash-and-steel-fair-combat/releases).
+Download: [Nexus Mods](https://www.nexusmods.com/ofashandsteel/mods/62) or the [GitHub releases](https://github.com/Gh05d/ash-and-steel-fair-combat/releases).
 
 ## What it changes
 

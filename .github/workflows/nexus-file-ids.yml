@@ -1,0 +1,30 @@
+name: Nexus file ids
+
+# Manual helper: prints the numeric mod id and the mod-file ids of a Nexus page, i.e. the
+# value repo var NEXUSMODS_FILE_ID needs (upload-action beta.8 `file_id`). File ids are
+# public; the API key stays a masked secret.
+on:
+  workflow_dispatch:
+    inputs:
+      game:
+        description: "Nexus game domain"
+        default: ofashandsteel
+        required: true
+      mod:
+        description: "Game-scoped mod id from the page URL (/mods/<id>)"
+        required: true
+
+jobs:
+  ids:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Nexus v3 API
+        env:
+          KEY: ${{ secrets.NEXUSMODS_API_KEY }}
+          GAME: ${{ inputs.game }}
+          MOD: ${{ inputs.mod }}
+        run: |
+          mod_json=$(curl -sS -H "apikey: $KEY" "https://api.nexusmods.com/v3/games/$GAME/mods/$MOD")
+          numeric=$(echo "$mod_json" | jq -r '.data.id')
+          echo "numeric mod id: $numeric"
+          curl -sS -H "apikey: $KEY" "https://api.nexusmods.com/v3/mods/$numeric/files" | jq '.data'

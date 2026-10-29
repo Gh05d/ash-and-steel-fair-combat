@@ -1,6 +1,6 @@
 #!/bin/bash
 # Kopiert den Mod (mod/FairCombat) aufs Steam Deck. Danach im Spiel Strg+R (Hot-Reload).
-# Standardmäßig mit Debug-Log (jede Entscheidung in ue4ss/UE4SS.log); DEBUG=0 deployt genau die Release-Fassung.
+# Standardmäßig mit Debug-Log (jede Entscheidung in ue4ss/UE4SS.log und, bleibend, Mods/FairCombat/Scripts/FairCombat.log); DEBUG=0 deployt genau die Release-Fassung.
 # Voraussetzung: UE4SS ist im Spiel installiert (siehe ../camp-everywhere/CLAUDE.md).
 set -e
 cd "$(dirname "$0")/.."

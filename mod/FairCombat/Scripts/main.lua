@@ -63,8 +63,18 @@ local seen = { t = -1, kind = "none" } -- what the last Reaction did (set by the
 local controllers, nextScan = {}, 0
 local names, classes = {}, {}
 
+-- With debug on, every line also goes to FairCombat.log next to the script: UE4SS.log starts over with
+-- every game start, this file keeps growing.
+local logFile = CFG.debug and io.open(DIR .. "FairCombat.log", "a") or nil
+
 local function log(fmt, ...)
-    print("[FairCombat] " .. string.format(fmt, ...) .. "\n")
+    local line = string.format(fmt, ...)
+    print("[FairCombat] " .. line .. "\n")
+    if logFile then
+        local ok, stamp = pcall(os.date, "%Y-%m-%d %H:%M:%S")
+        logFile:write((ok and stamp or "?") .. " " .. line .. "\n")
+        logFile:flush()
+    end
 end
 
 local function dbg(fmt, ...)

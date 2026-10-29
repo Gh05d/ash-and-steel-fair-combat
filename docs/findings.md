@@ -96,3 +96,16 @@ Kandidaten, live zu vergleichen (Brücke, Arena):
 - Trefferstopp: Hook `CombatModule_AI_Humanoid:GotHit` (einmal pro Treffer, p7 = Angreifer); bei Nahkampftreffern des Spielers `CustomTimeDilation` 0,05 für Spieler und Gegner, 60 ms. Live über die Brücke: 14 Treffer gegen Hesus, dann im Mod ~35 Treffer gegen Tiere, keine Fehler, danach Dilation wieder 1,0.
 - `CustomTimeDilation` schreibt das Spiel selbst nur beim Ziehen der Zweihandaxt (`TwoHandedAxe`/`TwoHandedAxeOff`) → der Mod stellt den vorherigen Wert wieder her, nicht pauschal 1,0. Globale Zeitlupe (`SetGlobalTimeDilation`) nutzen Krit, Pfeil, Rush und SlowMo-Buff.
 - Rückstoß (Vergleich mit Sekiro, dort 1,0–1,4 m pro Katana-Treffer; 2026-10-28, Brücke): ohne Mod rutschen Banditen 0,7 s nach deinem Treffer meist 50–130 cm zurück, Gnus 0–60 cm, etwa jeder vierte Treffer 0 cm. Zusätzlicher `LaunchCharacter` (500 cm/s, waagerecht) wirkt kaum und zufällig (Banditen 21–26 cm, Woodwalker meist 0, Wölfe −135…+115 cm), vermutlich überschreibt die Root Motion der Treffer-Montages ihn. Verworfen (P: „lass ihn weg“).
+
+## Parieren aus dem Taumeln (1.0.1, 2026-10-28/29)
+
+- `ALS_Player_Controller` ruft `CombatModule_Player:Block\Parry` bei jedem Tastendruck auf, `Block\Parry` verlangt aber `CombatState` 2 (Idle). Ein Taumler hält den Spieler 1,4–1,7 s in 9 (WasHit), ein Niederschlag ist 5 (TempKnocked).
+- Umgesetzt: ab `parryCancel` (0,55 s, P) nach dem Taumler-Beginn stoppt der Mod die laufende Montage, setzt Idle und ruft `Block\Parry` erneut auf. Die Parade läuft sofort.
+- Live-Fund: WasHit kann die Treffer-Montage überdauern; dann läuft eine ALS-Übergangsmontage (dynamisch, Name `AnimMontage_<Zahl>`, z. B. `ALS_N_Stop_R_Down`). Deshalb zählt nur noch WasHit und die Zeit; gestoppt werden Treffer- und dynamische Montagen. Danach 4 von 4 späten Tastendrücken durch.
+- Ein Folgehieb, der schon unterwegs ist (Beginn 0,33 s vor dem Tastendruck, Treffer 0,05 s danach), wurde einmal nicht pariert. Einzelfall, nicht weiter verfolgt.
+
+## Passive oder weglaufende Gegner (2026-10-28/29, Spiel-KI, kein Mod-Fehler)
+
+- ~10 s ohne Angriff nach mehreren Treffern: Abwehrzweig des Behavior Trees (Gesundheit ≤ 30 %, Abstand < 500, Cooldown 60 s, `canGoDefenceMode`) → `AI_C_DefenceMode` mit `BB_StrafeDefenceMode`. P: „passt so“.
+- Weglaufen: Messpunkt (Abstand +1,2 m in 0,5 s) über 13 min Skelett-Kämpfe: fast immer Ausweichschritt nach hinten (`DodgeBackward`) oder Warten auf Abstand, beide mit Blick zum Spieler. Echtes Umdrehen 3-mal, bei normaler Ausdauer/Gesundheit, Tempo 325 cm/s, ohne Halten durch den Mod; Ursache nicht geklärt. `BB_Strafe` (wenig Ausdauer) hält den Blick per `K2_SetFocus`, scheidet aus. P: „es passt alles“ → nicht weiter verfolgt, Messpunkt wieder ausgebaut.
+- Debug-Fassung schreibt die Mod-Zeilen zusätzlich nach `Mods/FairCombat/Scripts/FairCombat.log` (UE4SS.log startet bei jedem Spielstart neu).

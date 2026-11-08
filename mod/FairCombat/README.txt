@@ -19,8 +19,10 @@ INSTALL
 
 WHAT IT DOES
   - After a stagger or knockdown you get a moment to recover. The enemy who
-    hit you lands one follow-up, then waits. No more stunlock chains.
+    hit you lands one follow-up, then waits (animals don't get one).
+    No more stunlock chains.
   - Only one melee enemy attacks at a time, the others guard and circle you.
+  - Badly wounded humans raise their guard instead of taunting you.
   - Archers keep shooting; they just can't stagger you again right away.
   - Enemies commit to their attack direction, so side steps work.
   - The few near-instant enemy attacks get a readable wind-up.

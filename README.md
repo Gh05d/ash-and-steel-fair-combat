@@ -6,8 +6,9 @@ Download: [Nexus Mods](https://www.nexusmods.com/ofashandsteel/mods/62) or the [
 
 ## What it changes
 
-- **No stunlock chains.** After a stagger you can't be staggered again for a moment (damage still applies). The enemy who staggered you gets **one** follow-up hit, then waits until you have recovered, even if it was in the middle of a combo. After the window there is a short breather in which nothing can stagger or knock you down again. Knockdowns work the same way: you can't be combo'd to death while you get up.
+- **No stunlock chains.** After a stagger you can't be staggered again for a moment (damage still applies). The enemy who staggered you gets **one** follow-up hit, then waits until you have recovered, even if it was in the middle of a combo. After the window there is a short breather in which nothing can stagger or knock you down again. Knockdowns work the same way: you can't be combo'd to death while you get up. Animals get no follow-up at all: the beast that staggered you backs off right away.
 - **Attack rights.** Only one melee enemy attacks you at a time, a second one waits close by and takes over. The others raise their guard and circle you at a distance instead of crowding you. After a combo an enemy backs off for a moment.
+- **No taunting on the brink.** A human enemy at 30 % health or less raises their guard instead of taunting you.
 - **Archers stay dangerous.** Ranged enemies keep shooting, from behind too. Taking them out first is up to you. Their arrows just can't stagger you again inside the protection window.
 - **Enemies commit to their attacks.** Humans aim briefly and then commit to a direction, so a side step at the right moment makes them miss. Attacking animals turn slower while they bite or charge.
 - **Readable wind-ups.** The few enemy attacks whose hit comes almost instantly (some rapier and two-handed attacks, 0.15-0.3 s) start a little slower, so you can actually see them coming. The swing itself keeps its speed.

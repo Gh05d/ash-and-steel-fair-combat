@@ -44,6 +44,11 @@ gh release create "$TAG" "$ZIP" \
 
 Ends stunlock chains in Of Ash and Steel and gives enemies a Souls-like rhythm: after a stagger or knockdown you get a moment to recover, the enemy who hit you lands one follow-up and then waits, only one melee enemy attacks at a time while the others circle you, enemies commit to their attack direction, the fastest wind-ups are readable, and your melee hits land with a short hit stop and louder hit sounds. Works for humans and animals.
 
+### New in 1.0.2
+- **Animals get no follow-up:** the animal that staggered you no longer bites again while you stagger, it waits until you have recovered (\`animalFollowUp\` in \`Scripts/config.lua\`, \`true\` brings the follow-up back).
+- **Waiting animals really wait:** an animal that was told to wait could still slip in a bite when its own taunt or dodge ended, and rats, gnus and others started jumps and heavy attacks while waiting. Both are fixed.
+- **No taunting on the brink:** a human enemy at 30 % health or less raises their guard instead of taunting you (\`lowHealthGuard\`, \`false\` turns it off).
+
 ### New in 1.0.1
 - **Parry out of a stagger:** once a stagger has run for 0.55 s, pressing parry ends it and you parry (\`parryCancel\` in \`Scripts/config.lua\`, \`false\` turns it off). Attacking and dodging still wait until the stagger is over, knockdowns are not affected.
 

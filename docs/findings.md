@@ -129,3 +129,10 @@ Kandidaten, live zu vergleichen (Brücke, Arena):
 - Spiel: `AI_C_TauntCustom` spielt die Spott-Montage, wartet ihre Länge (`Delay`) und ruft danach `Combat_RegenStamina` – Verspotten ist die Verschnaufpause. Im Menschen-Baum: bei `Stamina < 0.2` (ohne Cooldown) und zufällig 15 % (Cooldown 10 s, Abstand 1,5–5 m). Gesundheit spielt keine Rolle. Vermutung (ungeprüft): Das Halten durch den Mod (`DefenceMode?`) lässt die KI öfter durch ihre Nicht-Angriffs-Zweige laufen und verspotten.
 - Umgesetzt: Post-Hook auf `ReceiveExecuteAI` (einmal pro Spott). Bei Gesundheit ≤ `lowHealthGuard` (0,3) wird die Montage gestoppt und `SetDefenceMode` für die Länge der Montage eingeschaltet, danach `ReturnToBasicMode` (nicht bei vom Mod gehaltenen Gegnern). Die Aufgabe läuft normal aus und regeneriert. Debug-Log: jede Verspottung mit Gesundheit, Ausdauer, `held`.
 - Möglicher Konflikt: Fällt in diese Zeit der spieleigene Abwehrzweig (`AI_C_DefenceMode`, ebenfalls ≤ 30 %), beendet `ReturnToBasicMode` ihn früher.
+
+## Live-Test 2026-11-08 13:19–14:53 (1.0.2-Stand, Debug)
+
+- Woodwalker (`GS_Forester_C`) staggert 13:42:48 → `hold`, 13:42:50 `stays held (counter reset by its tree)`, kein zweiter Biss, `release` nach 2 s. Damit ist der Ausgangsfall dieser Runde live bestätigt.
+- Deckung statt Spott: `Base_NPC_Taverna_Bandit3` bei 25 % Gesundheit 14:26:53 → `guards instead`, griff 19 s später normal an. Übrige Verspottungen über 30 % (zwei bei Ausdauer 0,15–0,17, also Verschnaufen).
+- 15 Angriffe gehaltener Tiere gestoppt (Ratten, Gnu, `GS_Mrakoris` Rammstoß). Eine gehaltene Ratte setzte in 31 s fünfmal an (Freischaltung über Zähler > 3), Pascal hat kein Zucken bemerkt: „mir ist nichts aufgefallen“.
+- Keine Fehler, kein „could not cancel“. Rover (`GS_Rhino`) nicht dabei, sein Anrennen im gehaltenen Zustand bleibt offen.

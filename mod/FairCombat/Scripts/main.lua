@@ -19,7 +19,7 @@
 --   * Every tickMs: enemies fighting the player get attack rights; the others are held back through the
 --     behavior tree key "DefenceMode?" (the attack branch only runs while it is not set), raise their guard
 --     and walk around the player.
-local VERSION = "1.0.2"
+local VERSION = "1.0.3"
 
 local UEHelpers = require("UEHelpers")
 local CFG = require("config")

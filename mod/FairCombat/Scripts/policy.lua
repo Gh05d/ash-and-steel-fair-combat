@@ -2,7 +2,8 @@
 --
 -- Protection window: a stagger (or knockdown) opens a window in which you can't be staggered or knocked
 -- down again. Every melee enemy may land one hit in it; the enemy who caused it gets exactly one follow-up
--- and then waits until you have recovered (window end + recoverBuffer). Ranged enemies are not limited.
+-- and then waits until you have recovered (window end + recoverBuffer). A causer without a follow-up
+-- (noFollowUp: animals, whose bites come back to back) waits from the stagger on. Ranged enemies are not limited.
 -- Attack rights: at most cfg.attackers melee enemies attack, cfg.ready more wait close by, the rest keep
 -- their distance. Whoever holds an attack slot keeps it until they are locked, back off or leave.
 local Policy = {}
@@ -57,7 +58,7 @@ function Policy:mayHit(now, id, ranged)
     return not self.used[id]
 end
 
-function Policy:hit(now, id, reaction, ranged)
+function Policy:hit(now, id, reaction, ranged, noFollowUp)
     if not ranged and self:locked(now, id) then return end
     if self:protection(now) then
         if not ranged and not self.used[id] then
@@ -69,19 +70,19 @@ function Policy:hit(now, id, reaction, ranged)
     end
     if reaction ~= "stagger" and reaction ~= "knock" then return end
     if not self:mayStagger(now) then return end
-    self:restart(now, id, reaction, ranged)
+    self:restart(now, id, reaction, ranged, noFollowUp)
 end
 
 -- Opens a new protection window from now. Also used when the mod could not cancel a stagger the player got
 -- inside a window: then the player recovers from this one, and window, grace and lock start over.
-function Policy:restart(now, id, reaction, ranged)
+function Policy:restart(now, id, reaction, ranged, noFollowUp)
     local length = reaction == "knock" and self.cfg.knockWindow or self.cfg.staggerWindow
     local to = now + length
     local grace = reaction == "knock" and self.cfg.knockGrace or self.cfg.staggerGrace
     self.window = { kind = reaction, from = now, to = to, graceTo = to + grace, causer = id }
     self.used = {}
     if not ranged then
-        self.lock[id] = { from = to, to = to + self.cfg.recoverBuffer }
+        self.lock[id] = { from = noFollowUp and now or to, to = to + self.cfg.recoverBuffer }
     end
 end
 

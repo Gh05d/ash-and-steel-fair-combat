@@ -109,3 +109,10 @@ Kandidaten, live zu vergleichen (Brücke, Arena):
 - ~10 s ohne Angriff nach mehreren Treffern: Abwehrzweig des Behavior Trees (Gesundheit ≤ 30 %, Abstand < 500, Cooldown 60 s, `canGoDefenceMode`) → `AI_C_DefenceMode` mit `BB_StrafeDefenceMode`. P: „passt so“.
 - Weglaufen: Messpunkt (Abstand +1,2 m in 0,5 s) über 13 min Skelett-Kämpfe: fast immer Ausweichschritt nach hinten (`DodgeBackward`) oder Warten auf Abstand, beide mit Blick zum Spieler. Echtes Umdrehen 3-mal, bei normaler Ausdauer/Gesundheit, Tempo 325 cm/s, ohne Halten durch den Mod; Ursache nicht geklärt. `BB_Strafe` (wenig Ausdauer) hält den Blick per `K2_SetFocus`, scheidet aus. P: „es passt alles“ → nicht weiter verfolgt, Messpunkt wieder ausgebaut.
 - Debug-Fassung schreibt die Mod-Zeilen zusätzlich nach `Mods/FairCombat/Scripts/FairCombat.log` (UE4SS.log startet bei jedem Spielstart neu).
+
+## Woodwalker beißt im Taumeln nach (2026-11-08)
+
+- Pascal: Woodwalker greifen noch an, während er taumelt; Schaden/Taumler fängt der Mod ab, aber der Biss kommt zu früh.
+- Ursache: `GS_Forester_BT` beißt, solange `SimpleAttackCounter` ≤ 3 ist (Bisse `bite_01-03` 1,1–1,2 s, Treffer bei 0,68 s; `ReboundBite_L/R` 2,07 s, Treffer bei 0,80 s), also bis zu vier Mal hintereinander. Der Verursacher durfte im Fenster einen Folgetreffer landen (wie bei Menschen) → zweiter Biss ~1,1 s nach dem ersten, mitten im Taumler (1,4–1,7 s).
+- Geändert: Tiere (`GS_AI_AnimalController_C`) bekommen keinen Folgebiss; der Verursacher wird ab dem Taumler gehalten bis Fensterende + `recoverBuffer` (`animalFollowUp = false`). Andere Gegner behalten ihren Treffer im Fenster.
+- Nebenwirkung: Gehalten fällt der Baum auf „SpecialSkill“ durch (Fliegenschwarm `Attack_Spec_SwarmFlies`, 10 % pro Durchlauf, Cooldown 60 s), sonst Verspotten/Ausweichen. Live prüfen, ob der Schwarm dadurch öfter kommt.

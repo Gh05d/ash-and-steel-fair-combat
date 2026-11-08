@@ -320,6 +320,8 @@ local function onGotHit(ctx, _impact, _damage, _stamina, _stagger, _direction, a
         local pc = UEHelpers.GetPlayerController()
         local npc = not valid(pc) or ctrl:GetFullName() ~= pc:GetFullName()
         local ranged = not npc or isRanged(enemy:GetDistanceTo(pawn))
+        -- animals bite back to back: the one that staggered you bites again while you still stagger
+        local noFollowUp = not CFG.animalFollowUp and ctrl:GetClass():GetFName():ToString() == ANIMAL
 
         local protected = policy:protection(t)
         local mayHit = policy:mayHit(t, id, ranged)
@@ -345,7 +347,7 @@ local function onGotHit(ctx, _impact, _damage, _stamina, _stagger, _direction, a
                             dbg("retry cancelled %s", n)
                         else
                             local t2 = now()
-                            if t2 then policy:restart(t2, id, kind, ranged) end
+                            if t2 then policy:restart(t2, id, kind, ranged, noFollowUp) end
                             dbg("could not cancel (%s): protection starts over", tostring(n))
                         end
                     end)
@@ -353,7 +355,7 @@ local function onGotHit(ctx, _impact, _damage, _stamina, _stagger, _direction, a
             end
             reaction = "none"
         end
-        policy:hit(t, id, CFG.antiStunlock and reaction or "none", ranged)
+        policy:hit(t, id, CFG.antiStunlock and reaction or "none", ranged, noFollowUp)
         dbg("hit by %s reaction=%s ranged=%s window=%s", id, reaction, tostring(ranged), tostring(policy:protection(t)))
     end)
     if not ok then log("GotHit hook error: %s", tostring(err)) end

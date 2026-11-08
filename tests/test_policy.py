@@ -272,6 +272,30 @@ class GraceTest(PolicyCase):
         self.assertIsNone(self.p.protection(self.p, 2.1))
 
 
+class NoFollowUpTest(PolicyCase):
+    """An enemy without a follow-up (animals) waits from the stagger on, not only from the window end."""
+
+    def hit(self, t, who, reaction='none', ranged=False, noFollowUp=True):
+        self.p.hit(self.p, t, who, reaction, ranged, noFollowUp)
+
+    def test_causer_locked_from_the_stagger(self):
+        self.hit(0.0, 'A', 'stagger')
+        self.assertFalse(self.may_hit(0.5, 'A'))
+        self.assertEqual(self.roles(0.5, ('A', 100)), {'A': 'wait'})
+        self.assertFalse(self.may_hit(1.9, 'A'))
+        self.assertTrue(self.may_hit(2.1, 'A'))
+
+    def test_others_keep_their_hit(self):
+        self.hit(0.0, 'A', 'stagger')
+        self.assertTrue(self.may_hit(0.5, 'B'))
+
+    def test_restart_locks_from_now(self):
+        self.hit(0.0, 'A', 'stagger')
+        self.p.restart(self.p, 1.6, 'A', 'stagger', False, True)
+        self.assertFalse(self.may_hit(1.7, 'A'))
+        self.assertTrue(self.may_hit(3.7, 'A'))
+
+
 class RestartTest(PolicyCase):
     def test_uncancelled_stagger_restarts_protection(self):
         self.hit(0.0, 'A', 'stagger')

@@ -12,6 +12,7 @@
 --     (the game's own invincibility flag) until the swing ends.
 --   * Block\Parry (player, once per press): late in a stagger a parry press ends the stagger and parries.
 --   * GS_AI_SetCounter ends (animal taunt/dodge, once per action): a held animal stays held.
+--   * Animal attack tasks (once per attack): an attack a held animal starts anyway is stopped in frame one.
 --   * GotHit (enemy, once per hit): a melee hit of the player stops player and enemy for a moment; the game's
 --     hit sounds play louder (hitsounds.lua).
 --   * Every tickMs: enemies fighting the player get attack rights; the others are held back through the
@@ -39,6 +40,13 @@ local P = {
     blockParry = PLAYER .. ":Block\\Parry",
     counterEnd = "/Game/Characters/GS_Animals/AI/AI/Base/GS_AI_SetCounter.GS_AI_SetCounter_C:ReceiveDeactivationAI",
 }
+-- the attack tasks of animal trees (Woodwalker, Tunnel Beast, rat, gnu, swamp fly; not wolves): each plays its
+-- montage right in ReceiveExecuteAI, then waits for it to end
+local ANIMAL_ATTACKS = {}
+for _, t in ipairs({ "SimpleAttack", "HeavyAttack", "SpecialAttack" }) do
+    ANIMAL_ATTACKS[#ANIMAL_ATTACKS + 1] = "/Game/Characters/GS_Animals/AI/AI/Base/GS_AI_Animal_" .. t
+        .. ".GS_AI_Animal_" .. t .. "_C:ReceiveExecuteAI"
+end
 local WAS_HIT = 9                                   -- Character_CombatState WasHit (staggered)
 local IDLE = 2                                      -- Character_CombatState Idle: Block\Parry only works then
 local IN_COMBAT = 6                                 -- blackboard Status "inCombat"
@@ -606,6 +614,23 @@ local function onCounterEnd(_ctx, ownerController)
     if not ok then log("counter end hook error: %s", tostring(err)) end
 end
 
+-- Holding an animal through SimpleAttackCounter is not tight: some trees only allow their heavy and special
+-- attacks (rat jump) once the counter is above 3, and a reset can slip through. So any attack a held animal
+-- starts is stopped right away; the task then waits out the montage's length and the tree goes on.
+local function onAnimalAttack(_ctx, ownerController, controlledPawn)
+    local ok, err = pcall(function()
+        local ctrl = ownerController:get()
+        if not valid(ctrl) or not owned[ctrl:GetFullName()] or isHuman(ctrl) then return end
+        local enemy = controlledPawn:get()
+        local anim = valid(enemy) and enemy.Mesh:GetAnimInstance() or nil
+        local montage = valid(anim) and anim:GetCurrentActiveMontage() or nil
+        if not valid(montage) then return end
+        anim:Montage_Stop(0.1, montage)
+        dbg("held %s: stopped its attack %s", enemy:GetFName():ToString(), montage:GetFName():ToString())
+    end)
+    if not ok then log("animal attack hook error: %s", tostring(err)) end
+end
+
 local function releaseAll()
     for id, ctrl in pairs(owned) do
         if valid(ctrl) then pcall(hold, ctrl, id, false) end
@@ -731,6 +756,9 @@ function registerGameHooks()
         { P.enemyGotHit, onEnemyGotHit, "enemy GotHit" }, { P.blockParry, onBlockParry, "Block\\Parry" },
         { P.counterEnd, onCounterEnd, "GS_AI_SetCounter end" },
     }
+    for _, path in ipairs(ANIMAL_ATTACKS) do
+        hooks[#hooks + 1] = { path, onAnimalAttack, path:match("GS_AI_Animal_(%w+)_C") }
+    end
     if CFG.debug then -- measurement only
         hooks[#hooks + 1] = { P.playerTrace, onPlayerTrace, "player EnableTrace" }
     end

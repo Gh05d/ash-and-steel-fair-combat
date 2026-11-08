@@ -11,6 +11,7 @@
 --   * EnableTrace (enemy, once per swing): if this enemy may not hit right now, the player ignores hits
 --     (the game's own invincibility flag) until the swing ends.
 --   * Block\Parry (player, once per press): late in a stagger a parry press ends the stagger and parries.
+--   * GS_AI_SetCounter ends (animal taunt/dodge, once per action): a held animal stays held.
 --   * GotHit (enemy, once per hit): a melee hit of the player stops player and enemy for a moment; the game's
 --     hit sounds play louder (hitsounds.lua).
 --   * Every tickMs: enemies fighting the player get attack rights; the others are held back through the
@@ -36,6 +37,7 @@ local P = {
     playerTrace = PLAYER .. ":EnableTrace",
     enemyGotHit = ENEMY .. ":GotHit",
     blockParry = PLAYER .. ":Block\\Parry",
+    counterEnd = "/Game/Characters/GS_Animals/AI/AI/Base/GS_AI_SetCounter.GS_AI_SetCounter_C:ReceiveDeactivationAI",
 }
 local WAS_HIT = 9                                   -- Character_CombatState WasHit (staggered)
 local IDLE = 2                                      -- Character_CombatState Idle: Block\Parry only works then
@@ -588,12 +590,30 @@ local function trackHuman(id, enemy, attacking, t)
     end
 end
 
+-- An animal's taunt and dodge reset SimpleAttackCounter to 0 when they end (service GS_AI_SetCounter), and the
+-- tree picks its next action right away: a held animal would bite before the next tick sets the counter again
+-- (live 2026-10-29: Woodwalker bit while held). So the counter goes back up the moment it was reset.
+local function onCounterEnd(_ctx, ownerController)
+    local ok, err = pcall(function()
+        local ctrl = ownerController:get()
+        if not valid(ctrl) then return end
+        local id = ctrl:GetFullName()
+        if not owned[id] or isHuman(ctrl) then return end
+        local bb = ctrl.Blackboard
+        if valid(bb) then bb:SetValueAsInt(key("SimpleAttackCounter"), ANIMAL_HELD) end
+        dbg("%s stays held (counter reset by its tree)", id)
+    end)
+    if not ok then log("counter end hook error: %s", tostring(err)) end
+end
+
 local function releaseAll()
     for id, ctrl in pairs(owned) do
         if valid(ctrl) then pcall(hold, ctrl, id, false) end
         owned[id] = nil
     end
 end
+
+local registerGameHooks -- below; the scan retries hooks whose blueprint loads later (an animal's AI)
 
 local function tick()
     local t = now()
@@ -620,6 +640,7 @@ local function tick()
             for _, c in ipairs(FindAllOf(cls) or {}) do controllers[#controllers + 1] = c end
         end
         nextScan = t + SCAN_MS / 1000
+        pcall(registerGameHooks)
         unstick(pawn)
         for _, c in ipairs(controllers) do
             if valid(c) then unstick(c.Pawn) end
@@ -702,12 +723,13 @@ end
 -- the main menu). So the hooks are registered from PlayerController:ClientRestart, the usual UE4SS way,
 -- and right away if the functions are already there (script reload in game).
 local hooked = {}
-local function registerGameHooks()
+function registerGameHooks()
     local hooks = {
         { P.gitHit, onGitHit, "GitHit" }, { P.knock, onKnock, "Knock" }, { P.reaction, onReaction, "Reaction" },
         { P.gotHit, onGotHit, "GotHit" }, { P.enemyTrace, onEnemyTrace, "enemy EnableTrace" },
         { P.attackStart, onAttackStart, "attack start (GS_RotateToEnemyAI)" },
         { P.enemyGotHit, onEnemyGotHit, "enemy GotHit" }, { P.blockParry, onBlockParry, "Block\\Parry" },
+        { P.counterEnd, onCounterEnd, "GS_AI_SetCounter end" },
     }
     if CFG.debug then -- measurement only
         hooks[#hooks + 1] = { P.playerTrace, onPlayerTrace, "player EnableTrace" }

@@ -122,3 +122,10 @@ Kandidaten, live zu vergleichen (Brücke, Arena):
 - Ursache Ratte: `GS_Rat_BT` erlaubt `HeavyAttack`/`SpecialAttack` (Sprung, je 25 %) erst bei `SimpleAttackCounter` > 3 – das Halten mit 10 schaltet sie frei. Dazu ein ungesperrter `HeavyAttack` im Zweig „Random“ (10 %, Cooldown 10 s). Gleiche Tasks in `GS_Gnus_BT` und `GS_SwampFly_BT`.
 - Fix: Post-Hook auf `ReceiveExecuteAI` von `GS_AI_Animal_SimpleAttack/HeavyAttack/SpecialAttack` (spielen die Montage direkt dort, dann `Delay` + `FinishExecute`): bei gehaltenen Tieren wird die Montage sofort gestoppt. Wölfe nutzen eigene Tasks (`GS_AI_Animal_MoveToAttack_*`) und sind nicht abgedeckt.
 - Offen: 12:34:08 „could not cancel (nil)“ – beim Taumler fand der Mod weder sofort noch nach 50 ms eine Montage am Spieler. Vermutung (ungeprüft): Pascal traf im selben Moment selbst, der Trefferstopp (Dilation 0,05) verzögert den Start der Treffer-Montage.
+
+## Verspotten bei wenig Gesundheit (2026-11-08)
+
+- Pascal: Gegner (vermutlich Zweihand-Bandit) verspottet ihn bei niedriger eigener Gesundheit → freie Treffer, ergibt keinen Sinn.
+- Spiel: `AI_C_TauntCustom` spielt die Spott-Montage, wartet ihre Länge (`Delay`) und ruft danach `Combat_RegenStamina` – Verspotten ist die Verschnaufpause. Im Menschen-Baum: bei `Stamina < 0.2` (ohne Cooldown) und zufällig 15 % (Cooldown 10 s, Abstand 1,5–5 m). Gesundheit spielt keine Rolle. Vermutung (ungeprüft): Das Halten durch den Mod (`DefenceMode?`) lässt die KI öfter durch ihre Nicht-Angriffs-Zweige laufen und verspotten.
+- Umgesetzt: Post-Hook auf `ReceiveExecuteAI` (einmal pro Spott). Bei Gesundheit ≤ `lowHealthGuard` (0,3) wird die Montage gestoppt und `SetDefenceMode` für die Länge der Montage eingeschaltet, danach `ReturnToBasicMode` (nicht bei vom Mod gehaltenen Gegnern). Die Aufgabe läuft normal aus und regeneriert. Debug-Log: jede Verspottung mit Gesundheit, Ausdauer, `held`.
+- Möglicher Konflikt: Fällt in diese Zeit der spieleigene Abwehrzweig (`AI_C_DefenceMode`, ebenfalls ≤ 30 %), beendet `ReturnToBasicMode` ihn früher.

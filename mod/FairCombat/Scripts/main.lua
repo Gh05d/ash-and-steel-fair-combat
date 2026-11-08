@@ -13,6 +13,7 @@
 --   * Block\Parry (player, once per press): late in a stagger a parry press ends the stagger and parries.
 --   * GS_AI_SetCounter ends (animal taunt/dodge, once per action): a held animal stays held.
 --   * Animal attack tasks (once per attack): an attack a held animal starts anyway is stopped in frame one.
+--   * AI_C_TauntCustom (human taunt, once per taunt): a badly wounded human raises his guard instead.
 --   * GotHit (enemy, once per hit): a melee hit of the player stops player and enemy for a moment; the game's
 --     hit sounds play louder (hitsounds.lua).
 --   * Every tickMs: enemies fighting the player get attack rights; the others are held back through the
@@ -40,6 +41,7 @@ local P = {
     blockParry = PLAYER .. ":Block\\Parry",
     counterEnd = "/Game/Characters/GS_Animals/AI/AI/Base/GS_AI_SetCounter.GS_AI_SetCounter_C:ReceiveDeactivationAI",
 }
+local TAUNT = "/Game/Characters/NPC/AI/Functions/AI_C_TauntCustom.AI_C_TauntCustom_C:ReceiveExecuteAI"
 -- the attack tasks of animal trees (Woodwalker, Tunnel Beast, rat, gnu, swamp fly; not wolves): each plays its
 -- montage right in ReceiveExecuteAI, then waits for it to end
 local ANIMAL_ATTACKS = {}
@@ -631,6 +633,41 @@ local function onAnimalAttack(_ctx, ownerController, controlledPawn)
     if not ok then log("animal attack hook error: %s", tostring(err)) end
 end
 
+-- Humans taunt when out of stamina (and now and then at random); the task plays the taunt, waits for its end,
+-- then regenerates stamina. A badly wounded human taunting in front of you makes no sense and hands out free
+-- hits, so the taunt is stopped and he guards for its length instead (the task still runs out and regenerates).
+local function onTaunt(_ctx, ownerController, controlledPawn)
+    local ok, err = pcall(function()
+        local ctrl, enemy, pawn = ownerController:get(), controlledPawn:get(), playerPawn()
+        if not valid(ctrl) or not valid(enemy) or not pawn then return end
+        local bb = ctrl.Blackboard
+        local target = valid(bb) and bb:GetValueAsObject(key("Target")) or nil
+        if not valid(target) or target:GetFullName() ~= pawn:GetFullName() then return end
+        local id = ctrl:GetFullName()
+        local health, stamina = bb:GetValueAsFloat(key("Health")), bb:GetValueAsFloat(key("Stamina"))
+        local anim = enemy.Mesh:GetAnimInstance()
+        local montage = valid(anim) and anim:GetCurrentActiveMontage() or nil
+        local name = valid(montage) and montage:GetFName():ToString() or "-"
+        local guard = Policy.guardInsteadOfTaunt(health, CFG.lowHealthGuard) and valid(montage)
+        dbg("%s taunts (%s) health=%.2f stamina=%.2f held=%s%s", enemy:GetFName():ToString(), name, health, stamina,
+            tostring(owned[id] ~= nil), guard and ": guards instead" or "")
+        if not guard then return end
+        local okLen, len = pcall(function() return montage:GetPlayLength() end)
+        len = okLen and type(len) == "number" and len > 0 and len or 2.5
+        anim:Montage_Stop(0.2, montage)
+        local m = component(enemy, ENEMY)
+        if not m then return end
+        m:SetDefenceMode(false)
+        ExecuteInGameThreadWithDelay(math.ceil(len * 1000), function()
+            pcall(function()
+                -- held enemies keep the guard the wait behavior gave them
+                if valid(m) and not owned[id] then m:ReturnToBasicMode() end
+            end)
+        end)
+    end)
+    if not ok then log("taunt hook error: %s", tostring(err)) end
+end
+
 local function releaseAll()
     for id, ctrl in pairs(owned) do
         if valid(ctrl) then pcall(hold, ctrl, id, false) end
@@ -756,6 +793,7 @@ function registerGameHooks()
         { P.enemyGotHit, onEnemyGotHit, "enemy GotHit" }, { P.blockParry, onBlockParry, "Block\\Parry" },
         { P.counterEnd, onCounterEnd, "GS_AI_SetCounter end" },
     }
+    hooks[#hooks + 1] = { TAUNT, onTaunt, "AI_C_TauntCustom" }
     for _, path in ipairs(ANIMAL_ATTACKS) do
         hooks[#hooks + 1] = { path, onAnimalAttack, path:match("GS_AI_Animal_(%w+)_C") }
     end

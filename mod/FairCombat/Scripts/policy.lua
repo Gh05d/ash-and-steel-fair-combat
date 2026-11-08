@@ -152,6 +152,12 @@ function Policy.mayParryOut(now, staggerAt, cancel)
     return cancel ~= false and cancel ~= nil and staggerAt ~= nil and now - staggerAt >= cancel - 1e-9
 end
 
+-- Taunting is the game's way to catch breath (the task regenerates stamina at its end). A badly wounded human
+-- (health share 0..1 at or below `threshold`) raises his guard instead. `threshold` false = off.
+function Policy.guardInsteadOfTaunt(health, threshold)
+    return type(threshold) == "number" and type(health) == "number" and health <= threshold + 1e-9
+end
+
 -- Can this enemy attack right now (not locked, not backing off, has not used its hit in the window)?
 function Policy:available(now, id)
     if self:locked(now, id) then return false end

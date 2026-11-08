@@ -23,6 +23,7 @@ return {
     orbitStep = 50,      -- degrees around you per move
     orbitEvery = 1.0,    -- a new move every this many seconds
     guardEvery = 8.0,    -- the guard stance is renewed this often (the game ends it after 8-12 s)
+    lowHealthGuard = 0.3, -- humans at or below this share of health raise their guard instead of taunting (false = off)
 
     -- Turning: enemies no longer track you all the way through their attacks, so a side step pays off.
     humanTurnLimit = true,

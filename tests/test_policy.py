@@ -296,6 +296,23 @@ class NoFollowUpTest(PolicyCase):
         self.assertTrue(self.may_hit(3.7, 'A'))
 
 
+class TauntGuardTest(unittest.TestCase):
+    def setUp(self):
+        lua, _ = load_policy()
+        self.guard = lua.eval('(require("policy")).guardInsteadOfTaunt')
+
+    def test_low_health_guards(self):
+        self.assertTrue(self.guard(0.3, 0.3))
+        self.assertTrue(self.guard(0.1, 0.3))
+
+    def test_healthy_taunts(self):
+        self.assertFalse(self.guard(0.31, 0.3))
+
+    def test_off_or_unknown(self):
+        self.assertFalse(self.guard(0.1, False))
+        self.assertFalse(self.guard(None, 0.3))
+
+
 class RestartTest(PolicyCase):
     def test_uncancelled_stagger_restarts_protection(self):
         self.hit(0.0, 'A', 'stagger')

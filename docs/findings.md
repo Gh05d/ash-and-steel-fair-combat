@@ -136,3 +136,9 @@ Kandidaten, live zu vergleichen (Brücke, Arena):
 - Deckung statt Spott: `Base_NPC_Taverna_Bandit3` bei 25 % Gesundheit 14:26:53 → `guards instead`, griff 19 s später normal an. Übrige Verspottungen über 30 % (zwei bei Ausdauer 0,15–0,17, also Verschnaufen).
 - 15 Angriffe gehaltener Tiere gestoppt (Ratten, Gnu, `GS_Mrakoris` Rammstoß). Eine gehaltene Ratte setzte in 31 s fünfmal an (Freischaltung über Zähler > 3), Pascal hat kein Zucken bemerkt: „mir ist nichts aufgefallen“.
 - Keine Fehler, kein „could not cancel“. Rover (`GS_Rhino`) nicht dabei, sein Anrennen im gehaltenen Zustand bleibt offen.
+
+## Ruckeln durch 1.0.2 (2026-11-08)
+
+- Gemessen auf dem Deck (andere Session): alle ~1,53 s GameThread 250 ms voll, kein Frame. Ursache: `registerGameHooks` im Scan (1,5 s) suchte per `StaticFindObject` die ungeladenen `GS_AI_Animal_HeavyAttack/SpecialAttack`; eine Fehlsuche 144 ms, eine erfolgreiche 0 ms. Camp Everywhere, GothicLockpicking, RekitBridge je 1–2 ms.
+- Fix: Wiederholung im Scan entfernt; BT-Hooks werden per `NotifyOnNewObject("/Script/AIModule.BTTask_BlueprintBase"` bzw. `BTService_BlueprintBase`) eingehängt, sobald ein Objekt ihrer Klasse entsteht, und neu eingehängt, wenn die Klasse entladen und neu geladen wurde. Deployt 16:50, `NotifyOnNewObject` ohne Fehler registriert.
+

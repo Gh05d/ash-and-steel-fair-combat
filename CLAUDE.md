@@ -22,7 +22,7 @@ Pascals Combat-Mod: Taumel-Ketten beenden und Gegnern einen Souls-artigen Kampfr
 - UE4SS-Regeln, Deck-Regeln, SSH-Wege und Release-Ablauf wie in `../camp-everywhere/CLAUDE.md`: kein `LoopAsync`/`ExecuteWithDelay` (erlaubt: `LoopInGameThreadWithDelay`, `ExecuteInGameThreadWithDelay`), keine Hooks auf häufig feuernde BP-Funktionen, Hooks über `ClientRestart` registrieren; vor jeder Änderung im Spielordner fragen, ob Pascal spielt; vor Tests Spielstände sichern.
 - **UE4SS v3.0.1-1181 ruft Hooks auf Blueprint-Funktionen erst nach der Funktion auf** (live gemessen 2026-10-25): ein Treffer lässt sich im Hook nicht mehr verhindern, nur der nächste.
 - **Ein Fix gilt erst als bestätigt, wenn das Debug-Log den Ausgangsfall zeigt** (z. B. Woodwalker staggert → `hold` → kein zweiter `hit by` desselben Controllers). Läuft der Fall im Log nicht ab, „ungetestet“ sagen, nicht „funktioniert“.
-- Hooks auf Tier-BP-Klassen (`GS_AI_Animal_*`, `GS_AI_SetCounter`) greifen erst, wenn die Klasse geladen ist (erstes Tier in der Nähe) → `registerGameHooks` läuft deshalb auch im Scan-Takt mit.
+- **Nie wiederholt `StaticFindObject` auf etwas, das fehlen kann:** eine Fehlsuche kostet auf dem Deck ~144 ms Standbild (1.0.2 suchte zwei ungeladene Tier-Tasks alle 1,5 s → Ruckeln). Hooks auf Tier-BP-Klassen (`GS_AI_Animal_*`, `GS_AI_SetCounter`) laden erst mit dem ersten Tier → per `NotifyOnNewObject` auf `BTTask_/BTService_BlueprintBase` einhängen, gesucht wird nur bei ClientRestart/Skript-Load.
 - Keine Spieldaten aus `../research/` in dieses Repo (öffentlich, sobald veröffentlicht). Namen, Pfade, kurze Ausschnitte sind ok.
 - Pascal testet selbst im Spiel; Claude startet nichts und drückt keine Tasten.
 

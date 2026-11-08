@@ -675,7 +675,6 @@ local function releaseAll()
     end
 end
 
-local registerGameHooks -- below; the scan retries hooks whose blueprint loads later (an animal's AI)
 
 local function tick()
     local t = now()
@@ -702,7 +701,6 @@ local function tick()
             for _, c in ipairs(FindAllOf(cls) or {}) do controllers[#controllers + 1] = c end
         end
         nextScan = t + SCAN_MS / 1000
-        pcall(registerGameHooks)
         unstick(pawn)
         for _, c in ipairs(controllers) do
             if valid(c) then unstick(c.Pawn) end
@@ -784,34 +782,74 @@ end
 -- The game's blueprint functions only exist once the world is loaded (at game start the mod already runs in
 -- the main menu). So the hooks are registered from PlayerController:ClientRestart, the usual UE4SS way,
 -- and right away if the functions are already there (script reload in game).
-local hooked = {}
-function registerGameHooks()
+-- A behavior tree task or service of an animal's AI only loads with the first animal that uses it. A
+-- StaticFindObject that misses walks the whole object list: 144 ms on the Deck (live 2026-11-08: retrying the
+-- two missing animal tasks every 1.5 s froze the game for ~290 ms each time). So a missing hook is searched
+-- only from ClientRestart and script load; otherwise it is registered when the game constructs an object of
+-- its class (NotifyOnNewObject), and registered again if the class was unloaded and loaded anew.
+local hooked = {}  -- path -> the hooked UFunction
+local byClass = {} -- blueprint class name of a BT node -> hook entry
+local queued = {}
+
+local function hookList()
     local hooks = {
         { P.gitHit, onGitHit, "GitHit" }, { P.knock, onKnock, "Knock" }, { P.reaction, onReaction, "Reaction" },
         { P.gotHit, onGotHit, "GotHit" }, { P.enemyTrace, onEnemyTrace, "enemy EnableTrace" },
         { P.attackStart, onAttackStart, "attack start (GS_RotateToEnemyAI)" },
         { P.enemyGotHit, onEnemyGotHit, "enemy GotHit" }, { P.blockParry, onBlockParry, "Block\\Parry" },
-        { P.counterEnd, onCounterEnd, "GS_AI_SetCounter end" },
+        { P.counterEnd, onCounterEnd, "GS_AI_SetCounter end", true },
+        { TAUNT, onTaunt, "AI_C_TauntCustom", true },
     }
-    hooks[#hooks + 1] = { TAUNT, onTaunt, "AI_C_TauntCustom" }
     for _, path in ipairs(ANIMAL_ATTACKS) do
-        hooks[#hooks + 1] = { path, onAnimalAttack, path:match("GS_AI_Animal_(%w+)_C") }
+        hooks[#hooks + 1] = { path, onAnimalAttack, path:match("GS_AI_Animal_(%w+)_C"), true }
     end
     if CFG.debug then -- measurement only
         hooks[#hooks + 1] = { P.playerTrace, onPlayerTrace, "player EnableTrace" }
     end
     -- never hook Base_NPC:Combat_RotateToTarget: it fires up to ~70 times per second (live 2026-10-26)
-    for _, h in ipairs(hooks) do
-        local path, fn, name = h[1], h[2], h[3]
-        if not hooked[path] then
-            local f = StaticFindObject(path)
-            if f and f:IsValid() then
-                local ok, err = pcall(RegisterHook, path, fn)
-                hooked[path] = true
-                if ok then dbg("hooked " .. name) else log("hook " .. name .. " failed: " .. tostring(err)) end
-            end
-        end
+    return hooks
+end
+
+local function isHooked(path)
+    return hooked[path] ~= nil and hooked[path]:IsValid()
+end
+
+local function tryHook(h)
+    local path, fn, name = h[1], h[2], h[3]
+    local f = StaticFindObject(path)
+    if not (f and f:IsValid()) then return false end
+    local ok, err = pcall(RegisterHook, path, fn)
+    hooked[path] = f
+    if ok then dbg("hooked " .. name) else log("hook " .. name .. " failed: " .. tostring(err)) end
+    return true
+end
+
+local HOOKS = hookList()
+for _, h in ipairs(HOOKS) do
+    if h[4] then byClass[h[1]:match("%.([%w_]+):")] = h end
+end
+
+local function registerGameHooks()
+    for _, h in ipairs(HOOKS) do
+        if not isHooked(h[1]) then tryHook(h) end
     end
+end
+
+-- Called for every BT task/service object the game constructs (a few per AI that spawns); cheap when the
+-- class is not one of ours or already hooked.
+local function onNewNode(obj)
+    local ok, name = pcall(function() return obj:GetClass():GetFName():ToString() end)
+    local h = ok and byClass[name]
+    if not h or queued[h[1]] or isHooked(h[1]) then return end
+    queued[h[1]] = true
+    ExecuteInGameThreadWithDelay(50, function()
+        queued[h[1]] = nil
+        if not isHooked(h[1]) and not tryHook(h) then log("hook " .. h[3] .. ": class loaded but function not found") end
+    end)
+end
+for _, cls in ipairs({ "/Script/AIModule.BTTask_BlueprintBase", "/Script/AIModule.BTService_BlueprintBase" }) do
+    local ok, err = pcall(NotifyOnNewObject, cls, onNewNode)
+    if not ok then log("NotifyOnNewObject %s failed: %s", cls, tostring(err)) end
 end
 
 -- ClientRestart also fires when the game re-possesses the player inside the same level (respawn, cutscenes),

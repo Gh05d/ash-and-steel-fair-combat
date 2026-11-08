@@ -15,17 +15,22 @@ Pascals Combat-Mod: Taumel-Ketten beenden und Gegnern einen Souls-artigen Kampfr
 - Tests: `tests/run.sh` (legt `tests/.venv` mit `lupa` = echtes Lua 5.4 und `luaparser` an; testet `policy.lua` und die Syntax aller Scripts).
 - Aufs Deck: `scripts/deploy-deck.sh` (schaltet `debug` ein; `DEBUG=0` = Release-Fassung), dann im Spiel Strg+R. Claude deployt nach dem Commit selbst (Freigabe von Pascal); blockt der Classifier, macht es Pascal per `! scripts/deploy-deck.sh`.
 - Paket: `scripts/package.py` → `dist/FairCombat-<version>.zip` (bricht ab, wenn `debug = true`).
+- Release-Vorbereitung: `VERSION` in `main.lua`, Texte in `README.md`, `docs/nexus-description.bbcode`, `mod/FairCombat/README.txt` und den Abschnitt „New in x.y.z“ in `release.sh`; dann committen und `./release.sh`. Upload prüfen: `gh run watch <id> --repo Gh05d/ash-and-steel-fair-combat --exit-status`. Die Beschreibung auf der Nexus-Seite aktualisiert Pascal von Hand.
 
 ## Regeln
 
 - UE4SS-Regeln, Deck-Regeln, SSH-Wege und Release-Ablauf wie in `../camp-everywhere/CLAUDE.md`: kein `LoopAsync`/`ExecuteWithDelay` (erlaubt: `LoopInGameThreadWithDelay`, `ExecuteInGameThreadWithDelay`), keine Hooks auf häufig feuernde BP-Funktionen, Hooks über `ClientRestart` registrieren; vor jeder Änderung im Spielordner fragen, ob Pascal spielt; vor Tests Spielstände sichern.
 - **UE4SS v3.0.1-1181 ruft Hooks auf Blueprint-Funktionen erst nach der Funktion auf** (live gemessen 2026-10-25): ein Treffer lässt sich im Hook nicht mehr verhindern, nur der nächste.
+- **Ein Fix gilt erst als bestätigt, wenn das Debug-Log den Ausgangsfall zeigt** (z. B. Woodwalker staggert → `hold` → kein zweiter `hit by` desselben Controllers). Läuft der Fall im Log nicht ab, „ungetestet“ sagen, nicht „funktioniert“.
+- Hooks auf Tier-BP-Klassen (`GS_AI_Animal_*`, `GS_AI_SetCounter`) greifen erst, wenn die Klasse geladen ist (erstes Tier in der Nähe) → `registerGameHooks` läuft deshalb auch im Scan-Takt mit.
 - Keine Spieldaten aus `../research/` in dieses Repo (öffentlich, sobald veröffentlicht). Namen, Pfade, kurze Ausschnitte sind ok.
 - Pascal testet selbst im Spiel; Claude startet nichts und drückt keine Tasten.
 
 ## Werkzeuge
 
 - Asset-Recherche: Skill `game-re-unreal` (`rekit`, Konfiguration `../rekit.toml`). Gegner-KI: `rekit ue bt BaseNPC_AI_Controller`, Enums: `rekit ue enum Character_CombatState`.
+- `rekit` liegt nicht im PATH: `~/Code/claude-mods/plugins/game-re/bin/rekit`, aufrufen aus `~/Code/game-mods/ash-and-steel-mods`.
+- Log holen: `ssh -n -i ~/.ssh/deck_citadel -o IdentitiesOnly=yes deck-direct 'cat "/run/media/mmcblk0p1/steamapps/common/ofAshAndSteel/ofAshAndSteelGame/Binaries/Win64/ue4ss/Mods/FairCombat/Scripts/FairCombat.log"' > <scratchpad>/fc.log`, auswerten nach `hit by`, `hold`/`release`, `stays held`, `stopped its attack`, `taunts`, `could not`.
 - Laufzeit: RekitBridge (`rekit ue bridge send …`, `trace hook …`) – ist auf dem Deck installiert. Gegner-Controller `GS_AI_NPCController_C`, Blackboard über `.Blackboard`, Werte per `GetValueAsBool(FName("…"))`/`SetValueAsBool`.
 - Brücken-Experimente: Lua-Datei ohne `--`-Kommentare schreiben (wird zu einer Zeile), senden mit `rekit ue bridge send "lua $(tr '\n' ' ' < datei.lua)"`; Zustand in eine globale Tabelle (`FC_X = FC_X or {}`), damit erneutes Senden nur Funktionen ersetzt. `bridge send ping` hängt, wenn das Spiel aus ist → immer mit `timeout 20`. Vor dem Deploy das Experiment abschalten (Hooks überleben bis Strg+R).
 - Spiel-Sounds anhören: `.uasset`/`.uexp` per repak auf dem Deck entpacken (wie `../tools/oas-extract.sh`), der Ogg-Vorbis-Stream liegt direkt in der `.uexp` (ab `OggS`, keine `.ubulk`). Ergebnisse nur nach `../research/`, nie veröffentlichen.

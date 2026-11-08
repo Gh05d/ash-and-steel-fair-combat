@@ -142,3 +142,7 @@ Kandidaten, live zu vergleichen (Brücke, Arena):
 - Gemessen auf dem Deck (andere Session): alle ~1,53 s GameThread 250 ms voll, kein Frame. Ursache: `registerGameHooks` im Scan (1,5 s) suchte per `StaticFindObject` die ungeladenen `GS_AI_Animal_HeavyAttack/SpecialAttack`; eine Fehlsuche 144 ms, eine erfolgreiche 0 ms. Camp Everywhere, GothicLockpicking, RekitBridge je 1–2 ms.
 - Fix: Wiederholung im Scan entfernt; BT-Hooks werden per `NotifyOnNewObject("/Script/AIModule.BTTask_BlueprintBase"` bzw. `BTService_BlueprintBase`) eingehängt, sobald ein Objekt ihrer Klasse entsteht, und neu eingehängt, wenn die Klasse entladen und neu geladen wurde. Deployt 16:50, `NotifyOnNewObject` ohne Fehler registriert.
 
+
+## Zwei Woodwalker gleichzeitig (2026-11-08, 1.0.3)
+
+- 18:43:24–28: A staggert, wird gehalten, das Angriffsrecht geht an B; B beißt im Taumeln und in der Schonfrist (geblockt), der Neustart nach „could not cancel“ (eigener Zweihand-Stoß) gibt A frei, A beißt geblockt nach. Vorschlag „während Taumeln/Schonfrist alle Tiere halten“ hat Pascal abgelehnt: „Ne, das passt“. Nicht erneut vorschlagen.
